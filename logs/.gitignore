@@ -1,0 +1,8 @@
+# Ignore all run logs
+*.log
+runs/
+
+# Keep sample files
+!samples/
+!samples/sample_success.json
+!samples/sample_failure.json
