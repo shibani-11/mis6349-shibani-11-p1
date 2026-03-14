@@ -60,9 +60,9 @@ Example input structure:
 Before reasoning, the agent uses Python to analyze the dataset and
 generate summary statistics such as:
 
--   number of rows\
--   number of features\
--   class distribution\
+-   number of rows
+-   number of features
+-   class distribution
 -   missing values
 
 Example dataset summary:
@@ -112,11 +112,10 @@ Example output:
 
 Output constraints:
 
--   Must be valid JSON\
--   Recommended model must exist in the input model list\
--   Metrics must not be hallucinated\
--   If required inputs are missing, `requires_human_review` must be set
-    to true
+-   Must be valid JSON
+-   Recommended model must exist in the input model list
+-   Metrics must not be hallucinated
+-   If required inputs are missing, `requires_human_review` must be set to true
 
 ------------------------------------------------------------------------
 
@@ -138,13 +137,13 @@ Output constraints:
 
 ### Tools explicitly excluded
 
-BrowserTool\
+BrowserTool:
 Not required because the agent operates entirely on local data.
 
-External APIs\
+External APIs:
 No external services are required for this task.
 
-Database connections\
+Database connections:
 All inputs are provided as files in the repository.
 
 Keeping the toolset minimal reduces complexity and potential failure
@@ -173,10 +172,10 @@ points.
 
 Definitions:
 
-Hard failure\
+Hard failure:
 The agent crashes, throws an exception, or produces no output.
 
-Silent failure\
+Silent failure:
 The agent produces output but recommends the wrong model.
 
 Each run is logged with prompt version, input hash, latency, and output
