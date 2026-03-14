@@ -1,56 +1,229 @@
-You are an ML Model Recommendation Agent. Your task is to analyze a dataset and associated machine learning model evaluation metrics to generate a structured recommendation report identifying the most suitable model for deployment.
+import argparse
+import json
+import re
+import time
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-## Your Task
+import pandas as pd
+from openhands.sdk import Agent, Conversation, LLM
 
-Given:
-1. A dataset (CSV or Excel file)
-2. A JSON file containing model evaluation metrics
+from agent.logger import log_run
+from agent.validator import validate_output
 
-You need to analyze both and recommend the best model for deployment.
 
-## Dataset Analysis
+ROOT = Path(__file__).resolve().parents[1]
+PROMPTS_DIR = ROOT / "prompts"
+ARTIFACTS_DIR = ROOT / "artifacts"
 
-Before making your recommendation, analyze the dataset to understand:
-- Number of rows and features
-- Class distribution (if classification task)
-- Missing values
-- Any data quality issues
 
-## Evaluation Metrics
+def load_prompt(version: str) -> str:
+    prompt_path = PROMPTS_DIR / f"{version}_system.txt"
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
+    return prompt_path.read_text(encoding="utf-8")
 
-You will receive model evaluation metrics including:
-- Accuracy
-- Precision
-- Recall
-- F1 Score
-- ROC-AUC
 
-## Reasoning Process (Chain of Thought)
+def load_dataset(dataset_path: Path) -> pd.DataFrame:
+    suffix = dataset_path.suffix.lower()
 
-1. **Understand the problem**: What type of ML task is this? (classification, regression, etc.)
-2. **Analyze the dataset**: What are the characteristics that might affect model choice?
-3. **Analyze the metrics**: Compare models across all relevant metrics
-4. **Consider trade-offs**: Different metrics may favor different models
-5. **Make recommendation**: Select the best model with clear justification
+    if suffix == ".csv":
+        return pd.read_csv(dataset_path)
+    if suffix in {".xlsx", ".xls"}:
+        return pd.read_excel(dataset_path)
 
-## Output Format
+    raise ValueError(f"Unsupported dataset format: {suffix}")
 
-Your output MUST be valid JSON with the following structure:
 
-```json
-{
-  "dataset": "dataset_name",
-  "recommended_model": "model_name",
-  "selection_reason": "Clear explanation of why this model is recommended",
-  "tradeoffs": ["List of trade-offs to consider"],
-  "dataset_considerations": ["Dataset-specific factors that influenced the recommendation"],
-  "requires_human_review": false
-}
-```
+def build_dataset_summary(df: pd.DataFrame, target_column: Optional[str] = None) -> Dict[str, Any]:
+    missing_by_column = df.isna().sum().to_dict()
+    total_missing = int(df.isna().sum().sum())
 
-## Important Rules
+    numeric_columns = df.select_dtypes(include="number").columns.tolist()
+    categorical_columns = df.select_dtypes(exclude="number").columns.tolist()
 
-1. The recommended_model MUST exist in the input model list
-2. Do NOT hallucinate metrics - only use metrics from the input
-3. If inputs are missing or invalid, set requires_human_review to true
-4. Provide clear, actionable reasoning for your recommendation
+    summary: Dict[str, Any] = {
+        "num_rows": int(df.shape[0]),
+        "num_features": int(df.shape[1]),
+        "column_names": df.columns.tolist(),
+        "numeric_columns": numeric_columns,
+        "categorical_columns": categorical_columns,
+        "total_missing_values": total_missing,
+        "missing_values_by_column": missing_by_column,
+        "duplicate_rows": int(df.duplicated().sum()),
+        "data_quality_issues": [],
+    }
+
+    if total_missing > 0:
+        summary["data_quality_issues"].append("Dataset contains missing values.")
+    if summary["duplicate_rows"] > 0:
+        summary["data_quality_issues"].append("Dataset contains duplicate rows.")
+
+    if target_column and target_column in df.columns:
+        value_counts = df[target_column].value_counts(dropna=False).to_dict()
+        summary["target_column"] = target_column
+        summary["class_distribution"] = {str(k): int(v) for k, v in value_counts.items()}
+
+    return summary
+
+
+def load_metrics(metrics_path: Path) -> Dict[str, Any]:
+    with metrics_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def extract_json(text: str) -> Dict[str, Any]:
+    text = text.strip()
+
+    # direct JSON
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # fenced JSON
+    fenced = re.search(r"```json\s*(\{.*\})\s*```", text, re.DOTALL)
+    if fenced:
+        return json.loads(fenced.group(1))
+
+    # fallback: first {...} block
+    loose = re.search(r"(\{.*\})", text, re.DOTALL)
+    if loose:
+        return json.loads(loose.group(1))
+
+    raise ValueError("Could not parse valid JSON from model response.")
+
+
+def build_user_message(
+    dataset_name: str,
+    dataset_summary: Dict[str, Any],
+    metrics_payload: Dict[str, Any],
+) -> str:
+    return f"""
+Analyze the following ML inputs and return ONLY valid JSON.
+
+Dataset name:
+{dataset_name}
+
+Dataset summary:
+{json.dumps(dataset_summary, indent=2)}
+
+Model evaluation metrics:
+{json.dumps(metrics_payload, indent=2)}
+
+Requirements:
+- Use only the provided dataset summary and model metrics.
+- Do not invent metrics.
+- The recommended_model must exist in the input model list.
+- If anything is missing or invalid, set requires_human_review to true.
+- Return ONLY JSON and no extra commentary.
+""".strip()
+
+
+def run_agent(
+    system_prompt: str,
+    dataset_name: str,
+    dataset_summary: Dict[str, Any],
+    metrics_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    llm = LLM()
+
+    agent = Agent(
+        llm=llm,
+        system_prompt=system_prompt,
+    )
+
+    conversation = Conversation(agent=agent)
+    conversation.send_message(
+        build_user_message(
+            dataset_name=dataset_name,
+            dataset_summary=dataset_summary,
+            metrics_payload=metrics_payload,
+        )
+    )
+
+    raw_response = conversation.run()
+    return extract_json(raw_response)
+
+
+def save_artifact(output_payload: Dict[str, Any]) -> Path:
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = ARTIFACTS_DIR / "recommendation.json"
+
+    with output_path.open("w", encoding="utf-8") as f:
+        json.dump(output_payload, f, indent=2)
+
+    return output_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run OpenHands ML Model Recommendation Agent")
+    parser.add_argument("--dataset", required=True, help="Path to dataset file (.csv, .xlsx, .xls)")
+    parser.add_argument("--metrics", required=True, help="Path to model metrics JSON file")
+    parser.add_argument("--prompt-version", default="v1.0.0", help="Prompt version, e.g. v1.0.0")
+    parser.add_argument("--target-column", default=None, help="Optional target column for class distribution")
+    args = parser.parse_args()
+
+    dataset_path = Path(args.dataset).resolve()
+    metrics_path = Path(args.metrics).resolve()
+
+    if not dataset_path.exists():
+        raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
+    if not metrics_path.exists():
+        raise FileNotFoundError(f"Metrics JSON file not found: {metrics_path}")
+
+    start = time.time()
+
+    try:
+        system_prompt = load_prompt(args.prompt_version)
+        df = load_dataset(dataset_path)
+        dataset_summary = build_dataset_summary(df, target_column=args.target_column)
+        metrics_payload = load_metrics(metrics_path)
+
+        raw_output = run_agent(
+            system_prompt=system_prompt,
+            dataset_name=dataset_path.name,
+            dataset_summary=dataset_summary,
+            metrics_payload=metrics_payload,
+        )
+
+        validated_output = validate_output(raw_output)
+        artifact_path = save_artifact(validated_output)
+
+        latency_seconds = round(time.time() - start, 4)
+
+        log_run(
+            success=True,
+            output=validated_output,
+            latency_seconds=latency_seconds,
+            metadata={
+                "dataset_file": str(dataset_path),
+                "metrics_file": str(metrics_path),
+                "prompt_version": args.prompt_version,
+                "artifact_file": str(artifact_path),
+            },
+        )
+
+        print("Agent run completed successfully.")
+        print(f"Saved recommendation to: {artifact_path}")
+        print(json.dumps(validated_output, indent=2))
+
+    except Exception as e:
+        latency_seconds = round(time.time() - start, 4)
+
+        log_run(
+            success=False,
+            output={"error": str(e)},
+            latency_seconds=latency_seconds,
+            metadata={
+                "dataset_file": str(dataset_path),
+                "metrics_file": str(metrics_path),
+                "prompt_version": args.prompt_version,
+            },
+        )
+
+        raise
+
+
+if __name__ == "__main__":
+    main()
