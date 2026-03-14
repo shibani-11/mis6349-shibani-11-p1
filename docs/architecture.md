@@ -4,15 +4,12 @@
 
 **Last updated:** March 13th, 2026
 
-------------------------------------------------------------------------
-
 # The 5 Questions
 
 ## Question 1: What exactly does this agent do?
 
 Analyzes a dataset and associated machine learning model evaluation metrics to generate a structured recommendation report identifying the most suitable model for deployment.
 
-------------------------------------------------------------------------
 
 ## Question 2: What goes in, what comes out?
 
@@ -85,7 +82,6 @@ Example dataset summary:
 These statistics are then used along with model evaluation metrics to
 guide the recommendation.
 
-------------------------------------------------------------------------
 
 ### Output
 
@@ -117,7 +113,6 @@ Output constraints:
 -   Metrics must not be hallucinated
 -   If required inputs are missing, `requires_human_review` must be set to true
 
-------------------------------------------------------------------------
 
 ## Question 3: What tools does it need and why?
 
@@ -126,11 +121,9 @@ Output constraints:
   -------------------- -----------------------------------------------------
   FileReadTool         Reads the dataset file and model evaluation metrics
                        input file.
-
   IPythonRunCellTool   Executes Python code to analyze the dataset and
                        compute summary statistics such as class distribution
                        and missing values.
-
   FileWriteTool        Writes the generated recommendation report to an
                        output file.
   --------------------------------------------------------------------------
@@ -149,7 +142,6 @@ All inputs are provided as files in the repository.
 Keeping the toolset minimal reduces complexity and potential failure
 points.
 
-------------------------------------------------------------------------
 
 ## Question 4: How will you know it's working correctly?
 
@@ -181,7 +173,6 @@ The agent produces output but recommends the wrong model.
 Each run is logged with prompt version, input hash, latency, and output
 validation results.
 
-------------------------------------------------------------------------
 
 ## Question 5: What are the three most likely ways it fails?
 
