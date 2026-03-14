@@ -1,4 +1,4 @@
-# Placeholder for v1.1.0 system prompt
+# Placeholder for v0.1.0 system prompt
 
 This file will contain the first iteration of prompt updates.
 
