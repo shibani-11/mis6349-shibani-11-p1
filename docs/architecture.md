@@ -54,8 +54,7 @@ Example input structure:
 }
 ```
 
-Before reasoning, the agent uses Python to analyze the dataset and
-generate summary statistics such as:
+Before reasoning, the agent uses Python to analyze the dataset and generate summary statistics such as:
 
 -   number of rows
 -   number of features
@@ -79,9 +78,7 @@ Example dataset summary:
 }
 ```
 
-These statistics are then used along with model evaluation metrics to
-guide the recommendation.
-
+These statistics are then used along with model evaluation metrics to guide the recommendation.
 
 ### Output
 
@@ -124,48 +121,35 @@ Output constraints:
 
 ### Tools explicitly excluded
 
-BrowserTool:
+1. BrowserTool:
 Not required because the agent operates entirely on local data.
 
-External APIs:
+2. External APIs:
 No external services are required for this task.
 
-Database connections:
+3. Database connections:
 All inputs are provided as files in the repository.
 
-Keeping the toolset minimal reduces complexity and potential failure
-points.
-
+Keeping the toolset minimal to reduce complexity and potential failure points.
 
 ## Question 4: How will you know it's working correctly?
 
-  --------------------------------------------------------------------------
-  Metric          Target            Measurement Method
-  --------------- ----------------- ----------------------------------------
-  Accuracy        ≥ 80% correct     Manual review of run logs
-                  recommendations   
-                  across 10 varied  
-                  inputs            
-
-  Latency p50     \< 10 seconds     scripts/analyze_logs.py
-
-  Hard failure    \< 5%             scripts/analyze_logs.py
-  rate                              
-
-  Silent failure  \< 10%            Output schema validator
-  rate                              
-  --------------------------------------------------------------------------
+| Metric | Target | Measurement Method |
+|------|------|----------------|
+| Accuracy | ≥ 80% correct recommendations across 10 varied inputs | Manual review of run logs |
+| Latency p50 | < 10 seconds | scripts/analyze_logs.py |
+| Hard failure rate | < 5% | scripts/analyze_logs.py |
+| Silent failure rate | < 10% | Output schema validator |
 
 Definitions:
 
-Hard failure:
+> Hard failure:
 The agent crashes, throws an exception, or produces no output.
 
-Silent failure:
+> Silent failure:
 The agent produces output but recommends the wrong model.
 
-Each run is logged with prompt version, input hash, latency, and output
-validation results.
+Each run is logged with prompt version, input hash, latency, and output validation results.
 
 
 ## Question 5: What are the three most likely ways it fails?
