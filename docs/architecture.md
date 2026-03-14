@@ -116,17 +116,11 @@ Output constraints:
 
 ## Question 3: What tools does it need and why?
 
-  --------------------------------------------------------------------------
-  Tool                 Justification
-  -------------------- -----------------------------------------------------
-  FileReadTool         Reads the dataset file and model evaluation metrics
-                       input file.
-  IPythonRunCellTool   Executes Python code to analyze the dataset and
-                       compute summary statistics such as class distribution
-                       and missing values.
-  FileWriteTool        Writes the generated recommendation report to an
-                       output file.
-  --------------------------------------------------------------------------
+ | Tool | Justification |
+|------|---------------|
+| `FileReadTool` | Reads the dataset file and the model evaluation metrics input file. |
+| `IPythonRunCellTool` | Executes Python code to analyze the dataset and compute summary statistics such as class distribution and missing values. |
+| `FileWriteTool` | Writes the generated recommendation report to an output file. |
 
 ### Tools explicitly excluded
 
