@@ -4,26 +4,19 @@
 
 ## What This Agent Does
 
-Analyzes a dataset and associated machine learning model evaluation
-metrics to generate a structured recommendation identifying the most
-suitable machine learning model for deployment.
-
-------------------------------------------------------------------------
+Analyzes a dataset and associated machine learning model evaluation metrics to generate a structured recommendation identifying the most suitable machine learning model for deployment.
 
 # Architecture Answers
 
 ### 1. What exactly does this agent do?
 
-Analyzes dataset characteristics and model evaluation metrics to
-recommend the best machine learning model for deployment and generate a
-structured recommendation report.
+Analyzes dataset characteristics and model evaluation metrics to recommend the best machine learning model for deployment and generate a structured recommendation report.
 
-------------------------------------------------------------------------
+
 
 ### 2. Input schema
 
 The input schema is defined in:
-
 schemas/input_schema.py
 
 See:\
@@ -56,8 +49,6 @@ Example input format:
   ]
 }
 ```
-
-------------------------------------------------------------------------
 
 ### 3. Output schema
 
@@ -94,58 +85,41 @@ Example output:
 }
 ```
 
-------------------------------------------------------------------------
-
 ### 4. Tools used and why
 
-  -----------------------------------------------------------------------
-  Tool                             Purpose
-  -------------------------------- --------------------------------------
-  `FileReadTool`                   Reads dataset files and model
-                                   evaluation metrics.
+| Tool | Justification |
+|------|---------------|
+| `FileReadTool` | Reads the dataset file and the model evaluation metrics input file. |
+| `IPythonRunCellTool` | Executes Python code to analyze the dataset and compute summary statistics such as class distribution and missing values. |
+| `FileWriteTool` | Writes the generated recommendation report to an output file. |
 
-  `IPythonRunCellTool`             Executes Python code to compute
-                                   dataset statistics such as class
-                                   distribution and missing values.
-
-  `FileWriteTool`                  Writes the generated recommendation
-                                   report to an output file.
-  -----------------------------------------------------------------------
-
-------------------------------------------------------------------------
 
 ### 5. Success criteria
 
-  Metric                Target
-  --------------------- -------------------------------------------------------
-  Accuracy              ≥ 80% correct recommendations across 10 varied inputs
-  Latency p50           \< 10 seconds
-  Hard failure rate     \< 5%
-  Silent failure rate   \< 10%
-
-------------------------------------------------------------------------
+| Metric | Target | Measurement Method |
+|------|------|----------------|
+| Accuracy | ≥ 80% correct recommendations across 10 varied inputs | Manual review of run logs |
+| Latency p50 | < 10 seconds | scripts/analyze_logs.py |
+| Hard failure rate | < 5% | scripts/analyze_logs.py |
+| Silent failure rate | < 10% | Output schema validator |
 
 # Production Bar Status
 
-  Bar                 Status   Notes
-  ------------------- -------- ----------------------------------------------
-  Versioned prompts   ❌       Initial prompt version to be added
-  Error handling      ❌       Retry and validation logic to be implemented
-  Observability       ❌       Run logs will be stored in logs/runs/
-  Scope enforcement   ❌       max_iterations to be configured
-  Output validation   ❌       Pydantic schema validation planned
-  Test coverage       ❌       Pytest tests to be added
-
-------------------------------------------------------------------------
+| Bar | Status | Notes |
+|-----|--------|-------|
+| Versioned prompts | ❌ | Initial prompt version to be added |
+| Error handling | ❌ | Retry and validation logic to be implemented |
+| Observability | ❌ | Run logs will be stored in `logs/runs/` |
+| Scope enforcement | ❌ | `max_iterations` to be configured |
+| Output validation | ❌ | Pydantic schema validation planned |
+| Test coverage | ❌ | Pytest tests to be added |
 
 # Current Prompt Version
 
-`v0.1.0` --- Initial prompt structure defining reasoning steps for model
-recommendation.
+`v0.1.0` --- Initial prompt structure defining reasoning steps for model recommendation.
 
 See `prompts/README.md` for full prompt version history.
 
-------------------------------------------------------------------------
 
 # How to Run
 
@@ -154,7 +128,7 @@ See `prompts/README.md` for full prompt version history.
 ```bash
 git clone https://github.com/shibani-11/mis6349-shibani-11-p1.git
 cd mis6349-shibani-11-p1
-
+```
 2.  Install dependencies
 
 pip install -r requirements.txt
@@ -168,8 +142,6 @@ python agent/main.py
 5.  The generated recommendation report will appear in:
 
 outputs/recommendation_report.json
-
-------------------------------------------------------------------------
 
 # How to Run Tests
 
