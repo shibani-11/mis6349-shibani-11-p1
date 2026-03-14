@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-03-14T01:15:00",
+  "input": {
+    "dataset_path": "data/corrupted_dataset.xlsx",
+    "model_evaluations": [
+      {
+        "model_name": "model_a",
+        "accuracy": 0.75,
+        "precision": 0.70,
+        "recall": 0.60,
+        "f1_score": 0.65,
+        "roc_auc": 0.70
+      }
+    ]
+  },
+  "output": {
+    "dataset": "corrupted_dataset",
+    "recommended_model": "unknown",
+    "selection_reason": "Agent failed to produce valid recommendation: Dataset file could not be read - Invalid Excel file format",
+    "tradeoffs": [],
+    "dataset_considerations": [],
+    "requires_human_review": true,
+    "error": "Dataset file could not be read - Invalid Excel file format"
+  },
+  "latency_seconds": 3.2,
+  "success": false,
+  "prompt_version": "v1.0.0",
+  "failure_type": "hard_failure",
+  "error_details": {
+    "exception_type": "FileNotFoundError",
+    "message": "Invalid Excel file format"
+  }
+}
