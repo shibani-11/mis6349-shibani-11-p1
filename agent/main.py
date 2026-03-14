@@ -1,81 +1,105 @@
 import json
 from pathlib import Path
+from datetime import datetime
 
 from openhands.sdk import Agent, Conversation, LLM
 
-from agent.runner import run_with_retry
 from agent.validator import validate_output
 from agent.logger import log_run
 
-from schemas.input_schema import AgentInput
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / "data"
+PROMPTS_DIR = ROOT / "prompts"
+
+INPUT_FILE = DATA_DIR / "model_results.json"
 
 
-ROOT = Path(__file__).resolve().parents[1]
+def load_prompt(version: str = "v1.0.0"):
+    prompt_path = PROMPTS_DIR / f"{version}_system.txt"
 
-INPUT_FILE = ROOT / "data/processed/loan_model_results.json"
-PROMPT_FILE = ROOT / "prompts/v1.0.0_system.txt"
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Prompt not found: {prompt_path}")
 
-
-def load_prompt():
-
-    with open(PROMPT_FILE) as f:
-        return f.read()
+    return prompt_path.read_text()
 
 
-def build_agent():
+def load_input():
+    if not INPUT_FILE.exists():
+        raise FileNotFoundError("model_results.json not found in data/")
 
-    # Uses your configured LLM subscription automatically
+    with open(INPUT_FILE) as f:
+        return json.load(f)
+
+
+def build_user_prompt(model_results: dict):
+
+    return f"""
+You are an ML Model Recommendation Agent.
+
+Analyze the following model evaluation metrics and determine the best model.
+
+Model Results:
+{json.dumps(model_results, indent=2)}
+
+Return output strictly as JSON with the following fields:
+- best_model
+- reasoning
+- metrics_summary
+"""
+
+
+def run_agent(prompt_version="v1.0.0"):
+
+    system_prompt = load_prompt(prompt_version)
+    model_results = load_input()
+
+    user_prompt = build_user_prompt(model_results)
+
     llm = LLM()
 
     agent = Agent(
         llm=llm,
-        system_prompt=load_prompt()
+        system_prompt=system_prompt
     )
 
-    return agent
-
-
-def run_agent(agent, input_data):
-
     conversation = Conversation(agent=agent)
-
-    user_prompt = f"""
-Analyze the following ML model evaluation results and recommend the best model for deployment.
-
-Input data:
-
-{json.dumps(input_data, indent=2)}
-
-Return JSON only.
-"""
 
     conversation.send_message(user_prompt)
 
     response = conversation.run()
 
-    return json.loads(response)
+    return response
 
 
 def main():
 
-    with open(INPUT_FILE) as f:
-        data = json.load(f)
+    start_time = datetime.utcnow()
 
-    # validate input schema
-    AgentInput(**data)
+    try:
 
-    agent = build_agent()
+        output = run_agent()
 
-    output = run_with_retry(
-        lambda d: run_agent(agent, d),
-        data
-    )
+        validated_output = validate_output(output)
 
-    validate_output(output)
+        log_run(
+            success=True,
+            output=validated_output,
+            latency=str(datetime.utcnow() - start_time)
+        )
 
-    log_run(data, output)
+        print("\nAgent Recommendation:\n")
+        print(validated_output)
 
-    print("\nRecommended Model:", output["recommended_model"])
+    except Exception as e:
+
+        log_run(
+            success=False,
+            output=str(e),
+            latency=str(datetime.utcnow() - start_time)
+        )
+
+        print("Agent failed:", e)
 
 
 if __name__ == "__main__":
