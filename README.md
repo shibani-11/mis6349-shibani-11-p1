@@ -131,18 +131,21 @@ cd mis6349-shibani-11-p1
 ```
 2.  Install dependencies
 
+```bash
 pip install -r requirements.txt
-
+```
 3.  Place dataset and model metrics inside the `data/` directory.
 
 4.  Run the agent
 
+```bash
 python agent/main.py
+```
 
-5.  The generated recommendation report will appear in:
-
-outputs/recommendation_report.json
+5.  The generated recommendation report will appear in: outputs/recommendation_report.json
 
 # How to Run Tests
 
+```bash
 pytest tests/ -v
+```
