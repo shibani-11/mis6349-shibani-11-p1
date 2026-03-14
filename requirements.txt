@@ -1,2 +1,5 @@
-# Add your Python dependencies here, one per line
-# Example: package==1.0.0
+pandas
+scikit-learn
+xgboost
+pydantic
+pytest
