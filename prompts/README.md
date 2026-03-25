@@ -7,7 +7,7 @@
 - Designed for analyzing ML model evaluation metrics
 - Includes reasoning steps for model selection
 
-### v1.1.0 (First Iteration)
+### v1.1.0 (First Iteration prompt)
 - TBD: What changed + why in commit message
 
 ## Design Decisions
