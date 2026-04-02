@@ -1,17 +1,10 @@
-# Prompt Design Decisions
+# Prompt Version History
 
-## Version Changelog
 
-### v1.0.0 (Initial)
-- Initial CoT (Chain of Thought) structured system prompt
-- Designed for analyzing ML model evaluation metrics
-- Includes reasoning steps for model selection
-
-### v1.1.0 (First Iteration prompt)
-- TBD: What changed + why in commit message
-
-## Design Decisions
-
-1. **Chain of Thought**: We use CoT prompting to make the agent's reasoning explicit
-2. **Structured Output**: JSON format for machine-readable recommendations
-3. **Human Review Flag**: Built-in mechanism for flagging uncertain cases
+| Persona | File | Version | Date | Changes |
+|---|---|---|---|---|
+| Data Analyst | data_analyst_v0_1_0.md | v0.1.0 | 2026-04-01 | Initial |
+| Data Engineer | data_engineer_v0_1_0.md | v0.1.0 | 2026-04-01 | Initial |
+| ML Engineer | ml_engineer_v0_1_0.md | v0.1.0 | 2026-04-01 | Initial |
+| Business Analyst | business_analyst_v0_1_0.md | v0.1.0 | 2026-04-01 | Initial |
+| Executive Advisor | executive_advisor_v0_1_0.md | v0.1.0 | 2026-04-01 | Initial |
