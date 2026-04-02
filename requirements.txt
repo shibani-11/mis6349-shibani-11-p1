@@ -1,5 +1,26 @@
+# OpenHands SDK
+openhands-sdk
+openhands-tools
+
+# LLM
+openai
+litellm
+
+# Data
 pandas
+numpy
+openpyxl
+pyarrow
+
+# ML models
 scikit-learn
 xgboost
-pydantic
-pytest
+lightgbm
+imbalanced-learn
+
+# Schema validation
+pydantic>=2.0
+
+# Utilities
+python-dotenv
+uuid
