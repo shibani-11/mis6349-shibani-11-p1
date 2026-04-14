@@ -1,0 +1,8 @@
+{
+  "dataset_path": "data/raw/train.csv",
+  "target_column": "Loan Status",
+  "business_problem": "A lending institution wants to proactively identify which loan applicants are at high risk of defaulting on their loans, so they can make smarter credit approval decisions, minimize financial losses, and reduce overall portfolio risk \u2014 while ensuring creditworthy applicants are not unfairly rejected",
+  "domain": "finance",
+  "priority_metric": "roc_auc",
+  "run_id": "run_c4d60dd9"
+}

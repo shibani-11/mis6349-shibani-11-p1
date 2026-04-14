@@ -49,3 +49,5 @@ logs/*.log
 # OS
 .DS_Store
 Thumbs.db
+
+.current_run_id
