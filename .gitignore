@@ -50,4 +50,9 @@ logs/*.log
 .DS_Store
 Thumbs.db
 
-.current_run_id
+.current_run_idprocessed/*.csv
+processed/*.parquet
+scripts/explore_*.py
+scripts/model_build_*.py
+scripts/model_test_*.py
+model_building.py
