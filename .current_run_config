@@ -1,8 +1,8 @@
 {
   "dataset_path": "data/raw/Churn_Modelling.csv",
   "target_column": "Exited",
-  "business_problem": "A retail bank is experiencing a steady increase in customer attrition, leading to loss of revenue and higher customer acquisition costs. The bank wants to proactively identify customers who are likely to leave based on their demographic information, account activity, and financial behavior.",
-  "domain": "general",
+  "business_problem": "Predict which bank customers are likely to churn so the retention team can intervene early and reduce revenue loss",
+  "domain": "banking",
   "priority_metric": "roc_auc",
-  "run_id": "run_5d1dc64c"
+  "run_id": "run_b3f5c8bb"
 }
