@@ -50,9 +50,12 @@ logs/*.log
 .DS_Store
 Thumbs.db
 
-.current_run_idprocessed/*.csv
+# Runtime state
+.current_run_id
+.current_run_config
+
+# Generated run artifacts
+processed/*.csv
 processed/*.parquet
-scripts/explore_*.py
-scripts/model_build_*.py
-scripts/model_test_*.py
-model_building.py
+processed/run_*.json
+logs/runs/*.json

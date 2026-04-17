@@ -1,9 +1,0 @@
-# Placeholder for v0.1.0 system prompt
-
-This file will contain the first iteration of prompt updates.
-
-## What changed (to be filled in):
-- TBD
-
-## Why (to be filled in):
-- TBD

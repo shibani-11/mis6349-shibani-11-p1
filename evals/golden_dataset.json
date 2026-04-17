@@ -1,0 +1,651 @@
+{
+  "version": "1.0.0",
+  "description": "10-case golden dataset for MIRA system testing. Each case provides simulated phase 1-3 outputs and a candidate recommendation, with expected eval outcomes to verify the evaluation system itself.",
+  "cases": [
+    {
+      "case_id": "case_01",
+      "scenario": "clear_winner",
+      "description": "One model clearly best, clean data, perfect recommendation. All evals should pass.",
+      "tags": ["happy_path", "classification", "clear_winner"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 50000,
+          "column_count": 28,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 26000, "1": 24000},
+          "numeric_columns": ["age", "income", "balance", "tenure"],
+          "overall_missing_pct": 0.8,
+          "quality_issues": [],
+          "confidence_score": 0.93,
+          "genai_narrative": "The dataset contains 50,000 records with 28 features. Class distribution is well-balanced and data quality is high."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.89, "accuracy": 0.84, "f1_score": 0.83, "cross_val_score_mean": 0.88, "training_time_seconds": 14.2, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.86, "accuracy": 0.81, "f1_score": 0.80, "cross_val_score_mean": 0.85, "training_time_seconds": 18.7, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.83, "accuracy": 0.79, "f1_score": 0.77, "cross_val_score_mean": 0.82, "training_time_seconds": 22.1, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.81, "accuracy": 0.77, "f1_score": 0.75, "cross_val_score_mean": 0.80, "training_time_seconds": 45.3, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.74, "accuracy": 0.71, "f1_score": 0.70, "cross_val_score_mean": 0.73, "training_time_seconds": 2.1, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "Five classification models were evaluated. LightGBM emerged as the top performer."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.88, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[12100, 400], [600, 11900]]},
+            {"model_name": "XGBoost", "roc_auc": 0.85, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[11800, 700], [900, 11600]]},
+            {"model_name": "Random Forest", "roc_auc": 0.82, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[11500, 1000], [1100, 11400]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.80, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[11300, 1200], [1300, 11200]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.73, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[10900, 1600], [1700, 10800]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": [],
+          "genai_narrative": "LightGBM and XGBoost passed all quality checks and emerged as top performers."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "LightGBM demonstrated the strongest ability to identify high-risk customers, correctly classifying them 88% of the time while keeping false alarms at a manageable level.",
+        "primary_metric_value": 0.88,
+        "tradeoffs": ["Requires more memory than simpler models", "Longer training time than Logistic Regression", "Needs periodic retraining as customer behavior shifts"],
+        "alternative_model": "XGBoost",
+        "next_steps": ["Deploy in shadow mode alongside existing system for 30 days", "Monitor live false positive rate weekly and set alert thresholds", "Establish quarterly model retraining schedule with performance benchmarks"],
+        "deployment_considerations": ["Requires minimum 8GB RAM for batch scoring", "API response time target under 200ms"],
+        "risks": ["Model performance may degrade on new customer segments not in training data", "Regulatory review required before production deployment"],
+        "confidence_score": 0.87,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "After thorough evaluation of five candidate models, LightGBM has been selected as the best fit for deployment. It correctly identifies 88% of high-risk customers with acceptable false alarm rates and has passed all stability and reliability checks. The model generalizes well and shows no signs of memorizing training data. RECOMMENDATION: YES — proceed to deployment planning."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": true,
+        "judge_min_score": 7.5
+      }
+    },
+    {
+      "case_id": "case_02",
+      "scenario": "poor_performance",
+      "description": "All models perform below the 0.65 AUC threshold. HITL must be triggered.",
+      "tags": ["failure_mode", "low_performance", "hitl_required"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 15000,
+          "column_count": 12,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 7800, "1": 7200},
+          "numeric_columns": ["feature_1", "feature_2", "feature_3"],
+          "overall_missing_pct": 4.2,
+          "quality_issues": ["high_missing_values_in_feature_4"],
+          "confidence_score": 0.70,
+          "genai_narrative": "The dataset has 15,000 records. Several features show high missingness which may limit model performance."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.61, "accuracy": 0.58, "f1_score": 0.57, "cross_val_score_mean": 0.60, "training_time_seconds": 8.1, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.59, "accuracy": 0.56, "f1_score": 0.55, "cross_val_score_mean": 0.58, "training_time_seconds": 11.2, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.57, "accuracy": 0.54, "f1_score": 0.53, "cross_val_score_mean": 0.56, "training_time_seconds": 14.0, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.56, "accuracy": 0.54, "f1_score": 0.52, "cross_val_score_mean": 0.55, "training_time_seconds": 28.4, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.54, "accuracy": 0.52, "f1_score": 0.51, "cross_val_score_mean": 0.53, "training_time_seconds": 1.8, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "All five models show poor discriminative ability, likely due to low feature informativeness."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.60, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1800, 900], [950, 1350]]},
+            {"model_name": "XGBoost", "roc_auc": 0.58, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1750, 950], [1000, 1300]]},
+            {"model_name": "Random Forest", "roc_auc": 0.56, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1700, 1000], [1050, 1250]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.55, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1680, 1020], [1080, 1220]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.53, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1650, 1050], [1100, 1200]]}
+          ],
+          "top_models": ["LightGBM"],
+          "flagged_models": [],
+          "genai_narrative": "No model achieves acceptable performance. Human review is strongly recommended."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "Despite low overall performance, LightGBM marginally outperformed other models and is the least-bad option available.",
+        "primary_metric_value": 0.60,
+        "tradeoffs": ["Performance is near-random and not suitable for production use", "Limited feature informativeness constrains all models", "Cost of false negatives may be unacceptably high"],
+        "alternative_model": "XGBoost",
+        "next_steps": ["Conduct a feature engineering sprint to add more predictive signals", "Explore additional data sources to improve model inputs", "Re-evaluate after data quality improvements"],
+        "deployment_considerations": ["Not recommended for deployment in current state"],
+        "risks": ["Deploying this model could cause more harm than a rule-based approach", "Model performs only marginally better than random chance"],
+        "confidence_score": 0.35,
+        "requires_human_review": true,
+        "human_review_reason": "All models perform below the minimum acceptable threshold. Deployment is not advised.",
+        "executive_summary": "None of the five models evaluated show sufficient accuracy to be safely deployed. The best model correctly identifies only 60% of cases, barely better than a coin flip. Deploying any of these models carries significant risk of poor business outcomes. RECOMMENDATION: NO — do not deploy until additional data or features are sourced."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": false,
+        "hitl_triggered": true,
+        "production_ready": false,
+        "judge_min_score": 5.0
+      }
+    },
+    {
+      "case_id": "case_03",
+      "scenario": "severe_class_imbalance",
+      "description": "96/4 class split with SMOTE applied. Recommendation correctly highlights imbalance handling.",
+      "tags": ["class_imbalance", "smote", "classification"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 67000,
+          "column_count": 35,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": true,
+          "target_distribution": {"0": 64320, "1": 2680},
+          "numeric_columns": ["loan_amount", "income", "debt_ratio", "credit_score"],
+          "overall_missing_pct": 2.1,
+          "quality_issues": ["severe_class_imbalance_4_pct_minority"],
+          "confidence_score": 0.85,
+          "genai_narrative": "The dataset has a severe class imbalance with only 4% positive cases. SMOTE resampling was applied during model training."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.82, "accuracy": 0.92, "f1_score": 0.61, "cross_val_score_mean": 0.81, "training_time_seconds": 22.1, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.80, "accuracy": 0.91, "f1_score": 0.58, "cross_val_score_mean": 0.79, "training_time_seconds": 27.3, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.77, "accuracy": 0.90, "f1_score": 0.54, "cross_val_score_mean": 0.76, "training_time_seconds": 35.2, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.76, "accuracy": 0.90, "f1_score": 0.53, "cross_val_score_mean": 0.75, "training_time_seconds": 68.4, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.71, "accuracy": 0.89, "f1_score": 0.47, "cross_val_score_mean": 0.70, "training_time_seconds": 3.2, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling", "balanced_smote_oversampling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "SMOTE resampling was applied to address class imbalance. All models were evaluated on the resampled training set."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.81, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6320, 112], [148, 420]]},
+            {"model_name": "XGBoost", "roc_auc": 0.79, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6280, 152], [170, 398]]},
+            {"model_name": "Random Forest", "roc_auc": 0.76, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6200, 232], [210, 358]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.75, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6180, 252], [225, 343]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.70, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6100, 332], [290, 278]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": [],
+          "genai_narrative": "LightGBM performs best on the highly imbalanced dataset, catching the most default cases."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "LightGBM catches the most loan defaults — identifying approximately 74% of high-risk borrowers correctly, which is the key business priority given the 4% default rate.",
+        "primary_metric_value": 0.81,
+        "tradeoffs": ["Will still miss 26% of actual defaulters", "High-accuracy headline figure is misleading due to class imbalance", "Model requires careful threshold tuning to balance catch rate vs. false alarms"],
+        "alternative_model": "XGBoost",
+        "next_steps": ["Set classification threshold to optimize recall over precision for this use case", "Review flagged cases manually for the first 90 days post-deployment", "Track monthly default catch rate and compare to pre-model baseline"],
+        "deployment_considerations": ["Threshold tuning required before go-live", "Business team must agree on acceptable false positive rate"],
+        "risks": ["Class imbalance may cause performance degradation if default rate changes significantly", "Model was trained on SMOTE-augmented data — real-world performance may differ slightly"],
+        "confidence_score": 0.78,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "LightGBM has been selected as the recommended model for loan default detection. Despite the challenging data distribution, it correctly flags approximately 74% of high-risk borrowers — a meaningful improvement over current processes. The team must carefully tune the sensitivity of the system before deployment. RECOMMENDATION: YES — proceed with threshold configuration and shadow deployment."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": true,
+        "judge_min_score": 7.0
+      }
+    },
+    {
+      "case_id": "case_04",
+      "scenario": "data_leakage_detected",
+      "description": "Best model suspected of data leakage. HITL must be triggered as a CRITICAL risk.",
+      "tags": ["data_leakage", "hitl_required", "critical_risk"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 30000,
+          "column_count": 22,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 16000, "1": 14000},
+          "numeric_columns": ["age", "salary", "score"],
+          "overall_missing_pct": 1.5,
+          "quality_issues": [],
+          "confidence_score": 0.88,
+          "genai_narrative": "The dataset has 30,000 records. Initial quality checks passed with minor issues."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "XGBoost", "roc_auc": 0.99, "accuracy": 0.97, "f1_score": 0.97, "cross_val_score_mean": 0.98, "training_time_seconds": 9.4, "overfitting_detected": false},
+            {"model_name": "LightGBM", "roc_auc": 0.84, "accuracy": 0.80, "f1_score": 0.79, "cross_val_score_mean": 0.83, "training_time_seconds": 12.1, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.81, "accuracy": 0.77, "f1_score": 0.76, "cross_val_score_mean": 0.80, "training_time_seconds": 18.6, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.79, "accuracy": 0.75, "f1_score": 0.74, "cross_val_score_mean": 0.78, "training_time_seconds": 38.2, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.72, "accuracy": 0.68, "f1_score": 0.67, "cross_val_score_mean": 0.71, "training_time_seconds": 1.9, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "XGBoost achieved suspiciously high performance. Leakage checks flagged during testing."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "XGBoost", "roc_auc": 0.99, "overfitting_detected": false, "leakage_suspected": true, "stability_ok": true, "confusion_matrix": [[5800, 40], [35, 5625]]},
+            {"model_name": "LightGBM", "roc_auc": 0.83, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5300, 540], [480, 5180]]},
+            {"model_name": "Random Forest", "roc_auc": 0.80, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5150, 690], [620, 5040]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.78, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5050, 790], [710, 4950]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.71, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4800, 1040], [950, 4710]]}
+          ],
+          "top_models": ["LightGBM", "Random Forest"],
+          "flagged_models": ["XGBoost"],
+          "genai_narrative": "XGBoost was flagged for suspected data leakage. LightGBM is the recommended alternative."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "LightGBM is the best-performing model that passed all integrity checks. XGBoost was excluded due to data integrity concerns that would make its impressive numbers unreliable in production.",
+        "primary_metric_value": 0.83,
+        "tradeoffs": ["Top-performing model was excluded due to reliability concerns", "LightGBM performance is strong but not as high as the excluded model appeared", "Investigation of data collection process recommended"],
+        "alternative_model": "Random Forest",
+        "next_steps": ["Investigate the data pipeline to identify the source of leakage in XGBoost features", "Audit all feature definitions before any deployment", "Re-run full model evaluation after leakage source is identified and removed"],
+        "deployment_considerations": ["Deployment must wait until leakage investigation is complete", "XGBoost should not be deployed under any circumstances without investigation"],
+        "risks": ["Unknown leakage source may affect other models indirectly", "Incomplete investigation before deployment could expose the organization to unreliable predictions"],
+        "confidence_score": 0.60,
+        "requires_human_review": true,
+        "human_review_reason": "Data leakage was detected in the top-performing model. Human investigation of the data pipeline is required before any deployment decision.",
+        "executive_summary": "A data integrity issue was discovered during testing that makes our best-performing model unreliable. LightGBM, the next-best model with clean integrity, has been selected instead. Before deployment, the data team must investigate how the leakage occurred. RECOMMENDATION: NO — halt deployment until data integrity is confirmed."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": true,
+        "production_ready": false,
+        "judge_min_score": 7.0
+      }
+    },
+    {
+      "case_id": "case_05",
+      "scenario": "equal_models",
+      "description": "All models within 0.015 AUC — no clear winner. HITL should trigger due to ambiguous selection.",
+      "tags": ["ambiguous_selection", "hitl_required", "tied_models"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 22000,
+          "column_count": 18,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 11200, "1": 10800},
+          "numeric_columns": ["feature_a", "feature_b", "feature_c"],
+          "overall_missing_pct": 2.8,
+          "quality_issues": [],
+          "confidence_score": 0.80,
+          "genai_narrative": "The dataset is well-structured. All five models perform similarly, suggesting the features may be reaching a performance ceiling."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.780, "accuracy": 0.74, "f1_score": 0.73, "cross_val_score_mean": 0.775, "training_time_seconds": 10.2, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.775, "accuracy": 0.73, "f1_score": 0.73, "cross_val_score_mean": 0.770, "training_time_seconds": 13.8, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.771, "accuracy": 0.73, "f1_score": 0.72, "cross_val_score_mean": 0.768, "training_time_seconds": 19.5, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.768, "accuracy": 0.72, "f1_score": 0.72, "cross_val_score_mean": 0.765, "training_time_seconds": 41.3, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.765, "accuracy": 0.72, "f1_score": 0.71, "cross_val_score_mean": 0.762, "training_time_seconds": 1.5, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "All five models perform within 1.5% of each other, making model selection statistically ambiguous."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.778, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[2050, 550], [530, 2070]]},
+            {"model_name": "XGBoost", "roc_auc": 0.773, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[2040, 560], [540, 2060]]},
+            {"model_name": "Random Forest", "roc_auc": 0.770, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[2030, 570], [550, 2050]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.767, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[2025, 575], [555, 2045]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.764, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[2020, 580], [560, 2040]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": [],
+          "genai_narrative": "Models are statistically equivalent. Selection based solely on marginal numeric differences is not advised."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "Logistic Regression",
+        "selection_reason": "Given that all models perform equivalently, Logistic Regression is recommended for its simplicity, interpretability, fastest inference time, and easiest regulatory compliance.",
+        "primary_metric_value": 0.764,
+        "tradeoffs": ["Marginally lower raw performance than complex models", "May not capture non-linear patterns as well as tree-based models", "Selection relies on operational criteria rather than performance gap"],
+        "alternative_model": "LightGBM",
+        "next_steps": ["Consult with business stakeholders on whether interpretability or performance is the priority", "Run A/B test between Logistic Regression and LightGBM in production", "Invest in feature engineering to create a more meaningful performance gap"],
+        "deployment_considerations": ["All models are operationally equivalent; deployment choice should be driven by infrastructure and compliance requirements"],
+        "risks": ["Tied model performance indicates feature ceiling — model may not improve without new data sources", "Selection could be challenged in stakeholder review"],
+        "confidence_score": 0.55,
+        "requires_human_review": true,
+        "human_review_reason": "All models perform within 1.5% of each other. The selection is based on operational factors rather than performance. Human judgment is required to confirm the decision criteria.",
+        "executive_summary": "Five models were evaluated and all performed at a nearly identical level. Logistic Regression is recommended for its simplicity and ease of explanation to regulators, not because it outperformed others. A human decision-maker should confirm whether this trade-off is acceptable. RECOMMENDATION: NO — defer to stakeholder review before final decision."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": true,
+        "production_ready": false,
+        "judge_min_score": 6.5
+      }
+    },
+    {
+      "case_id": "case_06",
+      "scenario": "jargon_in_summary",
+      "description": "Recommendation is solid but executive_summary contains technical jargon. Behavior eval must fail no_jargon check.",
+      "tags": ["jargon_violation", "behavior_fail", "output_quality"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 40000,
+          "column_count": 25,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 21000, "1": 19000},
+          "numeric_columns": ["age", "balance", "credit"],
+          "overall_missing_pct": 1.0,
+          "quality_issues": [],
+          "confidence_score": 0.91,
+          "genai_narrative": "High quality dataset with 40,000 balanced records."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "XGBoost", "roc_auc": 0.87, "accuracy": 0.83, "f1_score": 0.82, "cross_val_score_mean": 0.86, "training_time_seconds": 16.3, "overfitting_detected": false},
+            {"model_name": "LightGBM", "roc_auc": 0.85, "accuracy": 0.81, "f1_score": 0.80, "cross_val_score_mean": 0.84, "training_time_seconds": 11.8, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.82, "accuracy": 0.78, "f1_score": 0.77, "cross_val_score_mean": 0.81, "training_time_seconds": 20.1, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.80, "accuracy": 0.76, "f1_score": 0.75, "cross_val_score_mean": 0.79, "training_time_seconds": 44.2, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.73, "accuracy": 0.70, "f1_score": 0.69, "cross_val_score_mean": 0.72, "training_time_seconds": 2.2, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "XGBoost achieved the best performance."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "XGBoost", "roc_auc": 0.86, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4800, 400], [350, 4450]]},
+            {"model_name": "LightGBM", "roc_auc": 0.84, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4700, 500], [450, 4350]]},
+            {"model_name": "Random Forest", "roc_auc": 0.81, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4600, 600], [550, 4250]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.79, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4550, 650], [600, 4200]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.72, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4300, 900], [850, 3950]]}
+          ],
+          "top_models": ["XGBoost", "LightGBM"],
+          "flagged_models": [],
+          "genai_narrative": "XGBoost and LightGBM are top performers. All models passed testing."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "XGBoost",
+        "selection_reason": "XGBoost delivered the highest accuracy across all validation folds, consistently outperforming competitors on the holdout set.",
+        "primary_metric_value": 0.86,
+        "tradeoffs": ["Higher computational cost than LightGBM", "Less interpretable than Logistic Regression", "Requires more tuning effort"],
+        "alternative_model": "LightGBM",
+        "next_steps": ["Deploy to staging environment for integration testing", "Establish monitoring dashboards for prediction drift", "Schedule 6-month model review"],
+        "deployment_considerations": ["Standard deployment infrastructure sufficient"],
+        "risks": ["Performance may degrade on data from regions not represented in training"],
+        "confidence_score": 0.84,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "XGBoost has been selected based on its superior ROC-AUC score of 0.86 and high F1 score across validation folds. The model demonstrates strong precision and recall balance suitable for production use. RECOMMENDATION: YES — proceed with deployment."
+      },
+      "expected_eval": {
+        "behavior_passes": false,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": false,
+        "judge_min_score": 4.0,
+        "failing_checks": ["no_jargon_in_summary"]
+      }
+    },
+    {
+      "case_id": "case_07",
+      "scenario": "overfitting_top_model",
+      "description": "Recommended model shows significant overfitting (train 0.95 vs test 0.70). HITL triggered.",
+      "tags": ["overfitting", "hitl_required", "model_quality"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 18000,
+          "column_count": 31,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 9500, "1": 8500},
+          "numeric_columns": ["feature_x", "feature_y", "feature_z"],
+          "overall_missing_pct": 3.5,
+          "quality_issues": [],
+          "confidence_score": 0.82,
+          "genai_narrative": "18,000 records with 31 features. Dataset is moderately sized."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "Random Forest", "roc_auc": 0.95, "accuracy": 0.91, "f1_score": 0.90, "cross_val_score_mean": 0.78, "training_time_seconds": 25.4, "overfitting_detected": true},
+            {"model_name": "LightGBM", "roc_auc": 0.82, "accuracy": 0.78, "f1_score": 0.77, "cross_val_score_mean": 0.80, "training_time_seconds": 10.8, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.80, "accuracy": 0.76, "f1_score": 0.75, "cross_val_score_mean": 0.78, "training_time_seconds": 14.2, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.78, "accuracy": 0.74, "f1_score": 0.73, "cross_val_score_mean": 0.76, "training_time_seconds": 39.8, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.71, "accuracy": 0.68, "f1_score": 0.67, "cross_val_score_mean": 0.70, "training_time_seconds": 1.7, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "Random Forest shows inflated training performance with high cross-validation variance, suggesting overfitting."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "Random Forest", "roc_auc": 0.70, "overfitting_detected": true, "leakage_suspected": false, "stability_ok": false, "confusion_matrix": [[1700, 800], [750, 1750]]},
+            {"model_name": "LightGBM", "roc_auc": 0.81, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1900, 600], [580, 1920]]},
+            {"model_name": "XGBoost", "roc_auc": 0.79, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1880, 620], [600, 1900]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.77, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1850, 650], [630, 1870]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.70, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[1720, 780], [760, 1740]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": ["Random Forest"],
+          "genai_narrative": "Random Forest was flagged for overfitting. LightGBM is the recommended model."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "LightGBM consistently outperforms other models on unseen data and shows stable behavior. Random Forest was excluded due to signs of memorizing training data rather than learning generalizable patterns.",
+        "primary_metric_value": 0.81,
+        "tradeoffs": ["Slightly lower headline accuracy than the excluded Random Forest model", "More complex to explain than Logistic Regression", "Requires parameter tuning for optimal performance"],
+        "alternative_model": "XGBoost",
+        "next_steps": ["Validate on a held-out time period to confirm temporal stability", "Set up automated retraining triggers if performance drops below 0.75", "Document model exclusion criteria for audit trail"],
+        "deployment_considerations": ["Standard deployment infrastructure sufficient", "Monitoring for distribution shift recommended"],
+        "risks": ["Dataset is moderately small — performance may fluctuate on edge cases", "Feature distribution may shift if business conditions change"],
+        "confidence_score": 0.76,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "LightGBM has been selected after the highest-performing training model was excluded for reliability concerns. LightGBM correctly identifies 81% of target cases on new data it has never seen — a strong and trustworthy result. RECOMMENDATION: YES — proceed with LightGBM deployment."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": true,
+        "judge_min_score": 7.5
+      }
+    },
+    {
+      "case_id": "case_08",
+      "scenario": "missing_required_fields",
+      "description": "Recommendation output is missing deployment_considerations and risks fields. Completeness checks fail.",
+      "tags": ["incomplete_output", "schema_violation", "behavior_fail"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 35000,
+          "column_count": 20,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 18000, "1": 17000},
+          "numeric_columns": ["col_a", "col_b", "col_c"],
+          "overall_missing_pct": 2.0,
+          "quality_issues": [],
+          "confidence_score": 0.88,
+          "genai_narrative": "Standard 35,000 record dataset. Balanced classes, clean data."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.85, "accuracy": 0.81, "f1_score": 0.80, "cross_val_score_mean": 0.84, "training_time_seconds": 11.2, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.83, "accuracy": 0.79, "f1_score": 0.78, "cross_val_score_mean": 0.82, "training_time_seconds": 15.3, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.74, "accuracy": 0.71, "f1_score": 0.70, "cross_val_score_mean": 0.73, "training_time_seconds": 2.1, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "Three models trained. LightGBM leads."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.84, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4200, 300], [280, 3720]]},
+            {"model_name": "XGBoost", "roc_auc": 0.82, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4100, 400], [360, 3640]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.73, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[3900, 600], [580, 3420]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": [],
+          "genai_narrative": "LightGBM is the clear top performer."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "LightGBM",
+        "selection_reason": "LightGBM demonstrated the best balance of accuracy and reliability across all validation tests.",
+        "primary_metric_value": 0.84,
+        "tradeoffs": ["Requires more computational resources than simpler alternatives", "Less interpretable for regulatory reviews"],
+        "alternative_model": "XGBoost",
+        "next_steps": ["Initiate staging environment deployment", "Configure monitoring alerts", "Schedule 3-month review"],
+        "confidence_score": 0.82,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "LightGBM is recommended for deployment with strong performance results. RECOMMENDATION: YES."
+      },
+      "expected_eval": {
+        "behavior_passes": false,
+        "quality_passes": false,
+        "hitl_triggered": false,
+        "production_ready": false,
+        "judge_min_score": 3.0,
+        "failing_checks": ["has_tradeoffs", "all_required_fields_present"]
+      }
+    },
+    {
+      "case_id": "case_09",
+      "scenario": "wrong_model_recommended",
+      "description": "Agent recommends 2nd-best model despite clear winner. Judge accuracy dimension should score low.",
+      "tags": ["wrong_selection", "accuracy_fail", "judge_flag"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 55000,
+          "column_count": 30,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 28000, "1": 27000},
+          "numeric_columns": ["income", "age", "balance", "score"],
+          "overall_missing_pct": 1.2,
+          "quality_issues": [],
+          "confidence_score": 0.92,
+          "genai_narrative": "Excellent quality dataset with 55,000 records."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "LightGBM", "roc_auc": 0.91, "accuracy": 0.87, "f1_score": 0.86, "cross_val_score_mean": 0.90, "training_time_seconds": 18.4, "overfitting_detected": false},
+            {"model_name": "Random Forest", "roc_auc": 0.78, "accuracy": 0.74, "f1_score": 0.73, "cross_val_score_mean": 0.77, "training_time_seconds": 28.6, "overfitting_detected": false},
+            {"model_name": "XGBoost", "roc_auc": 0.88, "accuracy": 0.84, "f1_score": 0.83, "cross_val_score_mean": 0.87, "training_time_seconds": 22.1, "overfitting_detected": false},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.82, "accuracy": 0.78, "f1_score": 0.77, "cross_val_score_mean": 0.81, "training_time_seconds": 55.3, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.72, "accuracy": 0.69, "f1_score": 0.68, "cross_val_score_mean": 0.71, "training_time_seconds": 2.3, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "LightGBM is the clear leader at 0.91 ROC-AUC, 3 points ahead of XGBoost."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "LightGBM", "roc_auc": 0.90, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6800, 200], [220, 6780]]},
+            {"model_name": "XGBoost", "roc_auc": 0.87, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6600, 400], [420, 6580]]},
+            {"model_name": "Random Forest", "roc_auc": 0.77, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6200, 800], [820, 6180]]},
+            {"model_name": "Gradient Boosting", "roc_auc": 0.81, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[6400, 600], [620, 6380]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.71, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5900, 1100], [1120, 5880]]}
+          ],
+          "top_models": ["LightGBM", "XGBoost"],
+          "flagged_models": [],
+          "genai_narrative": "LightGBM significantly outperforms all other models."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "XGBoost",
+        "selection_reason": "XGBoost was chosen for its strong community support, wide deployment tooling ecosystem, and solid performance on this dataset.",
+        "primary_metric_value": 0.87,
+        "tradeoffs": ["Slightly lower accuracy than LightGBM", "Well-supported and widely deployed in industry", "Better documentation and monitoring integrations available"],
+        "alternative_model": "LightGBM",
+        "next_steps": ["Deploy XGBoost to staging", "Configure SHAP-based explanations for regulatory review", "Set performance alerting at 0.80 threshold"],
+        "deployment_considerations": ["Mature deployment tooling available for XGBoost"],
+        "risks": ["Marginal performance gap vs LightGBM may matter in high-stakes decisions"],
+        "confidence_score": 0.79,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "XGBoost has been selected as the production model. It delivers strong performance and has excellent operational tooling for long-term maintenance. RECOMMENDATION: YES — proceed with XGBoost deployment."
+      },
+      "expected_eval": {
+        "behavior_passes": true,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": true,
+        "judge_min_score": 4.0,
+        "judge_accuracy_max_score": 5,
+        "notes": "Judge accuracy dimension should flag that LightGBM (0.91) was skipped in favor of XGBoost (0.87)"
+      }
+    },
+    {
+      "case_id": "case_10",
+      "scenario": "no_deployment_verdict",
+      "description": "Good recommendation but executive_summary has no YES or NO verdict. Behavior eval fails has_deployment_verdict.",
+      "tags": ["missing_verdict", "behavior_fail", "output_quality"],
+      "inputs": {
+        "data_exploration": {
+          "row_count": 42000,
+          "column_count": 26,
+          "inferred_task_type": "classification",
+          "class_imbalance_detected": false,
+          "target_distribution": {"0": 22000, "1": 20000},
+          "numeric_columns": ["credit_score", "income", "debt"],
+          "overall_missing_pct": 1.8,
+          "quality_issues": [],
+          "confidence_score": 0.90,
+          "genai_narrative": "Solid dataset with 42,000 records and clean balanced classes."
+        },
+        "model_building": {
+          "models_evaluated": [
+            {"model_name": "XGBoost", "roc_auc": 0.86, "accuracy": 0.82, "f1_score": 0.81, "cross_val_score_mean": 0.85, "training_time_seconds": 17.2, "overfitting_detected": false},
+            {"model_name": "LightGBM", "roc_auc": 0.84, "accuracy": 0.80, "f1_score": 0.79, "cross_val_score_mean": 0.83, "training_time_seconds": 12.4, "overfitting_detected": false},
+            {"model_name": "Logistic Regression", "roc_auc": 0.73, "accuracy": 0.70, "f1_score": 0.69, "cross_val_score_mean": 0.72, "training_time_seconds": 2.0, "overfitting_detected": false}
+          ],
+          "preprocessing_steps": ["median_imputation", "ordinal_encoding", "standard_scaling"],
+          "primary_metric": "roc_auc",
+          "genai_narrative": "XGBoost leads with strong cross-validation performance."
+        },
+        "model_testing": {
+          "test_results": [
+            {"model_name": "XGBoost", "roc_auc": 0.85, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5100, 400], [380, 4620]]},
+            {"model_name": "LightGBM", "roc_auc": 0.83, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[5000, 500], [460, 4540]]},
+            {"model_name": "Logistic Regression", "roc_auc": 0.72, "overfitting_detected": false, "leakage_suspected": false, "stability_ok": true, "confusion_matrix": [[4700, 800], [740, 4260]]}
+          ],
+          "top_models": ["XGBoost", "LightGBM"],
+          "flagged_models": [],
+          "genai_narrative": "XGBoost and LightGBM pass all checks."
+        }
+      },
+      "candidate_recommendation": {
+        "recommended_model": "XGBoost",
+        "selection_reason": "XGBoost provides the strongest ability to correctly identify high-risk customers at 85%, making it the most reliable option for this use case.",
+        "primary_metric_value": 0.85,
+        "tradeoffs": ["Higher compute cost than LightGBM", "Slightly harder to explain to non-technical stakeholders", "Requires tuning if data distribution shifts"],
+        "alternative_model": "LightGBM",
+        "next_steps": ["Complete integration testing in staging", "Establish baseline metrics for post-deployment monitoring", "Train operations team on model outputs and escalation procedures"],
+        "deployment_considerations": ["Standard cloud infrastructure is sufficient", "Regular monitoring dashboards recommended"],
+        "risks": ["Seasonal shifts in customer behavior may reduce model accuracy over time"],
+        "confidence_score": 0.83,
+        "requires_human_review": false,
+        "human_review_reason": null,
+        "executive_summary": "XGBoost has been selected based on its consistent and reliable performance across all validation scenarios. It correctly flags 85% of high-risk customers and has passed all quality and stability checks. The model is considered ready for the next phase of the deployment process pending final stakeholder sign-off."
+      },
+      "expected_eval": {
+        "behavior_passes": false,
+        "quality_passes": true,
+        "hitl_triggered": false,
+        "production_ready": false,
+        "judge_min_score": 5.0,
+        "failing_checks": ["has_deployment_verdict"]
+      }
+    }
+  ]
+}
