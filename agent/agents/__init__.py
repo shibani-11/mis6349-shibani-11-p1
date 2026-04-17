@@ -1,2 +1,1 @@
 from agent.agents.recommendation_agent import RecommendationAgent
-from agent.agents.narrative_agent import NarrativeAgent
