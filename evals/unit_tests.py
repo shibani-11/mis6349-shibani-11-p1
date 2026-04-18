@@ -26,34 +26,57 @@ from pathlib import Path
 
 _GOOD = {
     "recommended_model": "LightGBM",
-    "selection_reason": "LightGBM correctly identifies 88% of high-risk customers while maintaining manageable false alarm rates.",
+    "selection_reason": "LightGBM correctly identifies 88% of high-risk customers while maintaining manageable false alarm rates, outperforming all other candidates on cross-validated ROC-AUC.",
     "primary_metric_value": 0.88,
+    "all_models_summary": [
+        {"name": "LightGBM", "cv_roc_auc_mean": 0.88, "rank": 1, "verdict": "SELECTED", "why_not_recommended": ""},
+        {"name": "XGBoost", "cv_roc_auc_mean": 0.86, "rank": 2, "verdict": "RUNNER-UP", "why_not_recommended": "Marginally lower AUC and slower inference than LightGBM on this dataset size."},
+        {"name": "Random Forest", "cv_roc_auc_mean": 0.83, "rank": 3, "verdict": "REJECTED", "why_not_recommended": "Lower discriminative power; ensemble depth did not compensate for feature interaction gaps."},
+        {"name": "Logistic Regression", "cv_roc_auc_mean": 0.76, "rank": 4, "verdict": "REJECTED", "why_not_recommended": "Cannot capture non-linear interactions between Age and Balance that drive churn."},
+    ],
+    "model_comparison_narrative": (
+        "LightGBM led all models with a cross-validated score of 0.88, followed closely by XGBoost at 0.86. "
+        "Both gradient boosting methods substantially outperformed Random Forest (0.83) and Logistic Regression (0.76). "
+        "The gap between LightGBM and the baseline confirms that non-linear patterns are present and exploitable."
+    ),
+    "business_impact": {
+        "estimated_customers_identified": "Out of 1,000 customers likely to churn, the model correctly flags approximately 880 for the retention team.",
+        "retention_opportunity": "Early identification enables the retention team to deploy targeted offers before customers initiate cancellation.",
+        "model_value_statement": "Deploying this model could reduce monthly churn by an estimated 15-20% assuming a 30% retention success rate on flagged customers.",
+    },
     "tradeoffs": [
-        "Requires more memory than Logistic Regression",
-        "Longer training time — needs periodic retraining",
-        "Less interpretable than a rule-based system",
+        "Requires more memory than Logistic Regression — higher infrastructure cost",
+        "Longer training time — needs periodic retraining on fresh data",
+        "Less interpretable than a rule-based system — may require SHAP explainer for compliance",
     ],
     "alternative_model": "XGBoost",
+    "alternative_model_reason": "XGBoost achieved 0.86 AUC with comparable stability and is a well-supported production library.",
     "next_steps": [
         "Deploy in shadow mode alongside existing system for 30 days",
         "Monitor live false-positive rate weekly and set alert thresholds",
-        "Establish quarterly model retraining schedule with benchmarks",
+        "Establish quarterly model retraining schedule with performance benchmarks",
     ],
     "deployment_considerations": [
         "Minimum 8GB RAM for batch scoring",
         "API response time target under 200ms",
     ],
     "risks": [
-        "Model may degrade on new customer segments not in training data",
+        "Model may degrade on new customer segments not present in training data",
         "Regulatory review required before production deployment",
+    ],
+    "test_verdict_summary": "PASS — overfitting check passed (gap 0.03), no leakage detected, stability confirmed (std 0.02).",
+    "feature_drivers": [
+        {"feature": "Age", "importance": 0.24, "business_explanation": "Older customers show significantly higher churn rates — likely related to life-stage banking needs."},
+        {"feature": "IsActiveMember", "importance": 0.19, "business_explanation": "Inactive members are far more likely to leave — engagement is a strong retention signal."},
+        {"feature": "Balance", "importance": 0.17, "business_explanation": "Higher balances correlate with churn — may reflect customers who found better rates elsewhere."},
     ],
     "confidence_score": 0.87,
     "requires_human_review": False,
     "human_review_reason": None,
     "executive_summary": (
-        "After evaluating five candidate models, LightGBM has been selected for deployment. "
-        "It correctly identifies 88% of high-risk customers with stable and consistent behavior "
-        "on new data. All integrity checks passed. "
+        "After evaluating four candidate models, LightGBM has been selected for deployment. "
+        "It correctly identifies 88 out of every 100 customers likely to leave, with stable and consistent behavior on new data. "
+        "All pre-deployment integrity checks passed. "
         "RECOMMENDATION: YES — proceed to deployment planning."
     ),
 }
@@ -88,8 +111,10 @@ _MISSING_KEYS = {
 
 _REQUIRED_KEYS = [
     "recommended_model", "selection_reason", "primary_metric_value",
+    "all_models_summary", "model_comparison_narrative", "business_impact",
     "tradeoffs", "alternative_model", "next_steps",
-    "deployment_considerations", "risks", "confidence_score",
+    "deployment_considerations", "risks", "test_verdict_summary",
+    "feature_drivers", "confidence_score",
     "requires_human_review", "human_review_reason", "executive_summary",
 ]
 

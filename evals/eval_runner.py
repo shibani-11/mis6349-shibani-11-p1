@@ -58,35 +58,40 @@ class EvalRunner:
         print(f"  Running MIRA Evals — Run ID: {self.run_id}")
         print(f"{'='*60}")
 
-        exploration = self._load("data_exploration")
-        building = self._load("model_building")
-        testing = self._load("model_testing")
+        # MIRA v0.3.0 writes: data_card, model_selection (Phase 2+3 combined), recommendation
+        data_card      = self._load("data_card")
+        model_selection = self._load("model_selection")  # Phase 3 fields appended here
         recommendation = self._load("recommendation")
         orch = self._load_orch_log()
 
         # --- Layer 1: Behavior -------------------------------------------
         print("  [1/6] Behavior evals...")
         behavior = {
-            "data_exploration": eval_data_exploration(exploration),
-            "model_building": eval_model_building(building),
-            "model_testing": eval_model_testing(testing),
+            "data_card": eval_data_exploration(data_card),
+            "model_selection": eval_model_building(model_selection),
+            "model_testing": eval_model_testing(model_selection),
             "recommendation": eval_recommendation(recommendation),
         }
 
         # --- Layer 2: Quality --------------------------------------------
         print("  [2/6] Quality eval...")
         quality = eval_output_quality(
-            exploration, building, testing, recommendation,
+            data_card, model_selection, model_selection, recommendation,
             priority_metric=self.priority_metric,
         )
 
         # --- Layer 3: System ---------------------------------------------
         print("  [3/6] System eval...")
+        agent_metrics = orch.get("agent_metrics", {})
+        if isinstance(agent_metrics, dict):
+            agent_metrics = [agent_metrics]
+        outputs = orch.get("outputs_produced", {})
+        phases_completed = [k for k, v in outputs.items() if v]
         system = eval_system(
-            agent_metrics=orch.get("agent_metrics", []),
+            agent_metrics=agent_metrics,
             orchestrator_decisions=orch.get("orchestrator_decisions", []),
             total_duration=orch.get("total_duration_seconds", 0),
-            phases_completed=orch.get("phases_completed", []),
+            phases_completed=phases_completed,
             errors=orch.get("phases_failed", []),
         )
 
@@ -97,14 +102,14 @@ class EvalRunner:
         # --- Layer 5: HITL gate ------------------------------------------
         print("  [5/6] HITL risk gate...")
         hitl = evaluate_hitl_risk(
-            exploration, building, testing, recommendation,
+            data_card, model_selection, model_selection, recommendation,
             priority_metric=self.priority_metric,
         )
 
         # --- Layer 6: Production checklist -------------------------------
         print("  [6/6] Production checklist...")
         checklist = run_production_checklist(
-            exploration, building, testing, recommendation,
+            data_card, model_selection, model_selection, recommendation,
             priority_metric=self.priority_metric,
         )
 

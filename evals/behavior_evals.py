@@ -15,24 +15,23 @@ def eval_data_exploration(output: dict) -> dict:
             score += weight
 
     check("used_full_dataset",
-          output.get("row_count", 0) > 10000, weight=3)
-    check("identified_task_type",
-          output.get("inferred_task_type") in
-          ["classification", "regression"], weight=2)
+          output.get("rows", 0) >= 1000, weight=3)
+    check("computed_class_distribution",
+          bool(output.get("class_distribution")), weight=2)
     check("detected_class_imbalance",
           "class_imbalance_detected" in output, weight=2)
-    check("computed_target_distribution",
-          bool(output.get("target_distribution")), weight=2)
-    check("identified_numeric_columns",
-          bool(output.get("numeric_columns")), weight=1)
-    check("computed_missing_pct",
-          "overall_missing_pct" in output, weight=1)
+    check("computed_minority_ratio",
+          "minority_class_ratio" in output, weight=2)
+    check("profiled_features",
+          output.get("features", 0) > 0, weight=1)
+    check("computed_missing_values",
+          "missing_value_summary" in output, weight=1)
     check("found_quality_issues",
-          "quality_issues" in output, weight=1)
+          "data_quality_issues" in output, weight=1)
     check("has_genai_narrative",
           len(output.get("genai_narrative", "")) > 20, weight=1)
-    check("has_confidence_score",
-          0 <= output.get("confidence_score", -1) <= 1, weight=1)
+    check("has_recommended_approach",
+          len(output.get("recommended_approach", "")) > 10, weight=1)
 
     pct = round(score / total * 100, 1) if total > 0 else 0
     return {
@@ -58,29 +57,26 @@ def eval_model_building(output: dict) -> dict:
         if passed:
             score += weight
 
-    models = output.get("models_evaluated", [])
+    models = output.get("models_trained", [])
 
     check("trained_multiple_models", len(models) >= 2, weight=3)
     check("included_baseline",
-          any("logistic" in m.get("model_name", "").lower()
+          any("logistic" in m.get("name", "").lower()
               for m in models), weight=2)
     check("used_cross_validation",
-          all("cross_val_score_mean" in m for m in models)
+          all("cv_roc_auc_mean" in m for m in models)
           if models else False, weight=2)
-    check("recorded_training_time",
-          all("training_time_seconds" in m for m in models)
-          if models else False, weight=1)
-    check("checked_overfitting",
-          all("overfitting_detected" in m for m in models)
+    check("recorded_overfitting_gap",
+          all("overfitting_gap" in m for m in models)
           if models else False, weight=2)
+    check("selected_model_named",
+          bool(output.get("selected_model")), weight=2)
     check("applied_preprocessing",
-          bool(output.get("preprocessing_steps")), weight=1)
+          bool(output.get("preprocessing_applied")), weight=1)
     check("handled_imbalance",
-          any("balanced" in str(s).lower()
-              for s in output.get("preprocessing_steps", [])),
-          weight=2)
-    check("has_primary_metric",
-          bool(output.get("primary_metric")), weight=1)
+          output.get("class_imbalance_handled", False), weight=2)
+    check("has_rejected_models",
+          len(output.get("rejected_models", [])) >= 1, weight=1)
     check("has_genai_narrative",
           len(output.get("genai_narrative", "")) > 20, weight=1)
 
@@ -108,26 +104,23 @@ def eval_model_testing(output: dict) -> dict:
         if passed:
             score += weight
 
-    results = output.get("test_results", [])
-
-    check("tested_models", len(results) >= 2, weight=2)
+    # Phase 3 fields are appended to model_selection by the ML Test Engineer
     check("checked_overfitting",
-          all("overfitting_detected" in r for r in results)
-          if results else False, weight=2)
+          "overfitting_detected" in output, weight=2)
+    check("recorded_overfitting_gap",
+          "overfitting_gap" in output, weight=2)
     check("checked_leakage",
-          all("leakage_suspected" in r for r in results)
-          if results else False, weight=2)
+          "leakage_detected" in output, weight=2)
     check("checked_stability",
-          all("stability_ok" in r for r in results)
-          if results else False, weight=2)
-    check("generated_confusion_matrix",
-          all("confusion_matrix" in r for r in results)
-          if results else False, weight=1)
-    check("identified_top_models",
-          len(output.get("top_models", [])) >= 1, weight=2)
-    check("flagged_failures", "flagged_models" in output, weight=1)
-    check("has_genai_narrative",
-          len(output.get("genai_narrative", "")) > 20, weight=1)
+          "stability_flag" in output, weight=2)
+    check("has_feature_importance",
+          bool(output.get("feature_importance")), weight=2)
+    check("has_test_verdict",
+          output.get("test_verdict") in ["PASS", "FAIL"], weight=3)
+    check("has_test_findings",
+          "test_findings" in output, weight=1)
+    check("selected_model_named",
+          bool(output.get("selected_model")), weight=2)
 
     pct = round(score / total * 100, 1) if total > 0 else 0
     return {

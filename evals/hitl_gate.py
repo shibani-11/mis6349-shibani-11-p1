@@ -46,83 +46,63 @@ def evaluate_hitl_risk(
             "detail": detail,
         })
 
-    models = building.get("models_evaluated", [])
-    test_results = testing.get("test_results", [])
-    top_models = testing.get("top_models", [])
+    # building and testing both point to model_selection (Phase 3 appended)
+    models = building.get("models_trained", [])
 
     # --- CRITICAL: data leakage -----------------------------------------
-    leakage_models = [
-        r.get("model_name", "unknown")
-        for r in test_results
-        if r.get("leakage_suspected", False)
-    ]
-    if leakage_models:
+    if testing.get("leakage_detected", False):
         add_risk(
             "data_leakage_detected",
             "CRITICAL",
             5,
-            f"Leakage suspected in: {leakage_models}",
+            f"Leakage detected — investigate feature pipeline before deployment",
         )
 
     # --- HIGH: all models below performance floor -----------------------
     best_score = max(
-        (m.get(priority_metric, 0) for m in models), default=0
+        (m.get("cv_roc_auc_mean", 0) for m in models), default=0
     )
     if best_score < 0.60:
         add_risk(
             "poor_model_performance",
             "HIGH",
             4,
-            f"Best {priority_metric}: {best_score:.3f} — below 0.60 floor",
+            f"Best cv_roc_auc_mean: {best_score:.3f} — below 0.60 floor",
         )
 
     # --- HIGH: ambiguous selection (top-2 within 0.02) ------------------
     scores = sorted(
-        [m.get(priority_metric, 0) for m in models], reverse=True
+        [m.get("cv_roc_auc_mean", 0) for m in models], reverse=True
     )
     if len(scores) >= 2 and (scores[0] - scores[1]) < 0.02:
         add_risk(
             "ambiguous_model_selection",
             "HIGH",
             3,
-            f"Top-2 models differ by {scores[0] - scores[1]:.4f} on {priority_metric}",
+            f"Top-2 models differ by {scores[0] - scores[1]:.4f} on cv_roc_auc_mean",
         )
 
     # --- HIGH: severe class imbalance without resampling ----------------
-    target_dist = exploration.get("target_distribution", {})
-    if target_dist:
-        counts = list(target_dist.values())
-        total_count = sum(counts)
-        minority_pct = min(counts) / total_count * 100 if total_count else 50
-        preprocessing = building.get("preprocessing_steps", [])
-        resampled = any(
-            kw in str(s).lower()
-            for s in preprocessing
-            for kw in ("smote", "balanced", "oversamp", "undersamp")
+    minority_ratio = exploration.get("minority_class_ratio", 0.5)
+    minority_pct = minority_ratio * 100
+    resampled = building.get("class_imbalance_handled", False)
+    if minority_pct < 10 and not resampled:
+        add_risk(
+            "severe_imbalance_unhandled",
+            "HIGH",
+            3,
+            f"Minority class {minority_pct:.1f}% with no resampling applied",
         )
-        if minority_pct < 10 and not resampled:
-            add_risk(
-                "severe_imbalance_unhandled",
-                "HIGH",
-                3,
-                f"Minority class {minority_pct:.1f}% with no resampling applied",
-            )
 
     # --- MEDIUM: recommended model overfits -----------------------------
     rec_model_name = recommendation.get("recommended_model", "")
-    if rec_model_name:
-        rec_test = next(
-            (r for r in test_results
-             if r.get("model_name") == rec_model_name),
-            {},
+    if rec_model_name and testing.get("overfitting_detected", False):
+        add_risk(
+            "recommended_model_overfits",
+            "MEDIUM",
+            2,
+            f"{rec_model_name} shows overfitting (gap: {testing.get('overfitting_gap', '?')})",
         )
-        if rec_test.get("overfitting_detected", False):
-            add_risk(
-                "recommended_model_overfits",
-                "MEDIUM",
-                2,
-                f"{rec_model_name} shows overfitting on hold-out test set",
-            )
 
     # --- MEDIUM: low recommendation confidence --------------------------
     confidence = recommendation.get("confidence_score", 1.0)

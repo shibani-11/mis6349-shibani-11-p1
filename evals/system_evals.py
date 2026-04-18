@@ -24,10 +24,7 @@ def eval_system(
         if passed:
             score += weight
 
-    all_phases = [
-        "data_exploration", "model_building",
-        "model_testing", "recommendation"
-    ]
+    all_phases = ["data_card", "model_selection", "recommendation"]
 
     check("all_phases_completed",
           all(p in phases_completed for p in all_phases),

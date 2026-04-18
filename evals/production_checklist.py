@@ -20,8 +20,10 @@ production_ready = all critical items passed AND >= 6 of 7 total passed.
 
 _REQUIRED_KEYS = [
     "recommended_model", "selection_reason", "primary_metric_value",
+    "all_models_summary", "model_comparison_narrative", "business_impact",
     "tradeoffs", "alternative_model", "next_steps",
-    "deployment_considerations", "risks", "confidence_score",
+    "deployment_considerations", "risks", "test_verdict_summary",
+    "feature_drivers", "confidence_score",
     "requires_human_review", "human_review_reason", "executive_summary",
 ]
 
@@ -58,45 +60,38 @@ def run_production_checklist(
             "critical": critical,
         })
 
-    models = building.get("models_evaluated", [])
-    test_results = testing.get("test_results", [])
+    # building and testing both point to model_selection (Phase 3 appended)
+    models = building.get("models_trained", [])
 
     # 1. Model performance threshold (CRITICAL) --------------------------
     best_score = max(
-        (m.get(priority_metric, 0) for m in models), default=0
+        (m.get("cv_roc_auc_mean", 0) for m in models), default=0
     )
     item(
         "model_meets_performance_threshold",
         best_score >= 0.65,
-        f"Best {priority_metric}: {best_score:.3f} (minimum: 0.65)",
+        f"Best cv_roc_auc_mean: {best_score:.3f} (minimum: 0.65)",
         critical=True,
     )
 
     # 2. No data leakage (CRITICAL) --------------------------------------
-    leakage_models = [
-        r.get("model_name", "?")
-        for r in test_results
-        if r.get("leakage_suspected", False)
-    ]
+    leakage = testing.get("leakage_detected", False)
     item(
         "no_data_leakage_detected",
-        len(leakage_models) == 0,
-        "All models passed leakage check" if not leakage_models
-        else f"Leakage suspected in: {leakage_models}",
+        not leakage,
+        "All models passed leakage check" if not leakage
+        else "Leakage detected — deployment blocked",
         critical=True,
     )
 
     # 3. Recommended model passes overfitting check (CRITICAL) -----------
     rec_model = recommendation.get("recommended_model", "")
-    rec_test = next(
-        (r for r in test_results if r.get("model_name") == rec_model), {}
-    )
-    overfit = rec_test.get("overfitting_detected", False)
+    overfit = testing.get("overfitting_detected", False)
     item(
         "recommended_model_no_overfitting",
         not overfit,
         (f"{rec_model} passed overfitting check"
-         if not overfit else f"{rec_model} shows overfitting"),
+         if not overfit else f"{rec_model} shows overfitting (gap: {testing.get('overfitting_gap', '?')})"),
         critical=True,
     )
 
@@ -143,7 +138,7 @@ def run_production_checklist(
 
     # 7. Human review flag accurately set --------------------------------
     hitl_flag = recommendation.get("requires_human_review")
-    critical_risk_present = len(leakage_models) > 0 or best_score < 0.60
+    critical_risk_present = leakage or best_score < 0.60
     flag_is_bool = isinstance(hitl_flag, bool)
     flag_accurate = flag_is_bool and (
         not critical_risk_present or hitl_flag is True

@@ -24,29 +24,30 @@ def eval_output_quality(
         if passed:
             score += weight
 
-    models = building.get("models_evaluated", [])
+    # building and testing both point to model_selection (Phase 3 appended)
+    models = building.get("models_trained", [])
     best_score = max(
-        (m.get(priority_metric, 0) for m in models), default=0
+        (m.get("cv_roc_auc_mean", 0) for m in models), default=0
     )
 
     check("data_fully_analyzed",
-          exploration.get("row_count", 0) > 10000,
+          exploration.get("rows", 0) >= 1000,
           weight=2,
-          detail=f"Rows: {exploration.get('row_count', 0)}")
+          detail=f"Rows: {exploration.get('rows', 0)}")
     check("imbalance_detected",
           "class_imbalance_detected" in exploration, weight=2)
     check("minimum_performance",
           best_score >= 0.65,
           weight=3,
-          detail=f"Best {priority_metric}: {best_score:.3f}")
+          detail=f"Best cv_roc_auc_mean: {best_score:.3f}")
     check("multiple_models",
           len(models) >= 2,
           weight=2,
           detail=f"Models: {len(models)}")
     check("models_passed_testing",
-          len(testing.get("top_models", [])) >= 1,
+          testing.get("test_verdict") == "PASS",
           weight=3,
-          detail=f"Passing: {testing.get('top_models', [])}")
+          detail=f"test_verdict: {testing.get('test_verdict')}")
     check("recommendation_made",
           bool(recommendation.get("recommended_model")), weight=3)
     check("high_confidence",

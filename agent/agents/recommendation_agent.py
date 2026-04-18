@@ -13,7 +13,7 @@ from agent.tools import get_tools
 
 load_dotenv()
 
-PROMPT_VERSION = "mira_agent_v0_2_0.md"
+PROMPT_VERSION = "mira_agent_v0_3_0.md"
 
 
 class RecommendationAgent:
