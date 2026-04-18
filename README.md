@@ -14,7 +14,7 @@ It does not require a human to hand off results between phases. Phase transition
 
 ---
 
-### 2. What goes in, what comes out?
+### 2. Input and Output
 
 **Input** - configured via interactive CLI or `AgentInput` directly:
 
@@ -49,7 +49,7 @@ Supported formats: `.csv`, `.xlsx`, `.xls`, `.tsv`, `.parquet`, `.json`
 
 | Tool | What it does |
 |---|---|
-| `TerminalTool` | Runs Python/bash — how the agent executes data profiling, model training, and writes output files |
+| `TerminalTool` | needed for the agent, executes data profiling, model training, and writes output files |
 | `FileEditorTool` | Reads datasets, writes and edits the three output JSON files |
 | `TaskTrackerTool` | Signals run completion — terminates the agent loop when all phases are done |
 
@@ -80,7 +80,7 @@ Registered in `agent/tools.py` and passed to the `Agent` on every run.
 
 | Library | Role |
 |---|---|
-| `pydantic >= 2.0` | `AgentInput` schema — validates all inputs at the boundary |
+| `pydantic >= 2.0` | `AgentInput` schema, validates all inputs at the boundary |
 | `uuid` | Generates unique `run_id` for each run |
 
 No browser, no external APIs, no database connections. The agent operates entirely on local files. The minimal toolset reduces failure surface and keeps runs reproducible.
@@ -97,7 +97,7 @@ MIRA self-evaluates after every run across 7 layers:
 | Quality Eval | Best model ≥ 0.65 AUC, Phase 3 passed, recommendation produced | ≥ 70% |
 | System Eval | All 3 phases completed, no errors, run < 1 hour | ≥ 70% |
 | Unit Tests | 18 deterministic checks on recommendation schema (keys, types, ranges) | 100% |
-| HITL Gate | 7 weighted risk factors — leakage (5), poor performance (4), overfitting (2), low confidence (2), etc. | Risk score < 5 |
+| HITL Gate | 7 weighted risk factors : leakage (5), poor performance (4), overfitting (2), low confidence (2), etc. | Risk score < 5 |
 | Production Checklist | 7 items; 3 critical items (leakage, overfitting, AUC floor) block deployment if failed | ≥ 6/7 + all critical |
 | LLM Judge | Independent LLM grades reasoning quality and schema compliance | Reported separately |
 
@@ -221,9 +221,8 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
 | Version | File | Changes |
 |---|---|---|
 | v0.3.0 | `prompts/mira_agent_v0_3_0.md` | CoT reasoning gates between phases (AutoML-GPT style); expanded model_selection and recommendation schemas; model candidate pool with inclusion/exclusion rules |
-| v0.2.0 | `prompts/mira_agent_v0_2_0.md` | Unified agentic prompt replacing 4-phase subprocess pipeline |
 
-See `prompts/README.md` for full prompt version history.
+See [prompts/README.md](prompts/README.md) for full prompt version history.
 
 ---
 
