@@ -16,8 +16,10 @@ _JARGON = [
 
 _REQUIRED_KEYS = [
     "recommended_model", "selection_reason", "primary_metric_value",
+    "all_models_summary", "model_comparison_narrative", "business_impact",
     "tradeoffs", "alternative_model", "next_steps",
-    "deployment_considerations", "risks", "confidence_score",
+    "deployment_considerations", "risks", "test_verdict_summary",
+    "feature_drivers", "confidence_score",
     "requires_human_review", "human_review_reason", "executive_summary",
 ]
 
@@ -60,11 +62,10 @@ class JudgeAgent:
         testing: dict,
         recommendation: dict,
     ) -> str:
-        models = building.get("models_evaluated", [])
-        test_results = testing.get("test_results", [])
-        best = max(models, key=lambda m: m.get("roc_auc", 0), default={})
+        models = building.get("models_trained", [])
+        best = max(models, key=lambda m: m.get("cv_roc_auc_mean", 0), default={})
         scores_map = {
-            m.get("model_name", "?"): round(m.get("roc_auc", 0), 4)
+            m.get("name", "?"): round(m.get("cv_roc_auc_mean", 0), 4)
             for m in models
         }
 
@@ -72,14 +73,13 @@ class JudgeAgent:
 Evaluate the MIRA Phase 4 recommendation below against verified pipeline ground truth.
 
 === GROUND TRUTH (verified) ===
-Dataset rows        : {exploration.get('row_count', 'N/A')}
+Dataset rows        : {exploration.get('rows', 'N/A')}
 Class imbalance     : {exploration.get('class_imbalance_detected', 'N/A')}
 Models (ROC-AUC)    : {json.dumps(scores_map)}
-Objectively best    : {best.get('model_name', 'N/A')} @ {best.get('roc_auc', 0):.4f}
-Top models (testing): {testing.get('top_models', [])}
-Flagged models      : {testing.get('flagged_models', [])}
-Leakage detected    : {any(r.get('leakage_suspected', False) for r in test_results)}
-Overfitting detected: {any(r.get('overfitting_detected', False) for r in test_results)}
+Objectively best    : {best.get('name', 'N/A')} @ {best.get('cv_roc_auc_mean', 0):.4f}
+Leakage detected    : {testing.get('leakage_detected', False)}
+Overfitting detected: {testing.get('overfitting_detected', False)}
+Test verdict        : {testing.get('test_verdict', 'N/A')}
 
 === RECOMMENDATION TO EVALUATE ===
 {json.dumps(recommendation, indent=2)[:3500]}
@@ -120,9 +120,9 @@ Use the file editor tool to write this JSON to the path above. Do nothing else.
         print(f"  RUN ID   : {self.run_id}")
         print(f"{'='*60}")
 
-        exploration = self._load("data_exploration")
-        building = self._load("model_building")
-        testing = self._load("model_testing")
+        exploration = self._load("data_card")
+        building = self._load("model_selection")
+        testing = self._load("model_selection")
         recommendation = self._load("recommendation")
 
         if not recommendation:

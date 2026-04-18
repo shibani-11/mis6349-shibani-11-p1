@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-from agent.agents import RecommendationAgent
+from agent.recommendation_agent import RecommendationAgent
 from schemas.input_schema import AgentInput
 
 

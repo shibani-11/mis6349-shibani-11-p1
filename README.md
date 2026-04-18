@@ -160,7 +160,7 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  RECOMMENDATION AGENT  (agents/recommendation_agent.py)         │
+│  RECOMMENDATION AGENT  (agent/recommendation_agent.py)          │
 │  Single LLM agent · prompt v0.3.0 · max 40 iterations          │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │

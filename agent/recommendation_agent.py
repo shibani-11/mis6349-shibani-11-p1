@@ -1,5 +1,5 @@
-# agent/agents/recommendation_agent.py
-# v0.2.0 — Unified agentic agent. Drives all four phases in a single
+# agent/recommendation_agent.py
+# v0.3.0 — Unified agentic agent. Drives all four phases in a single
 # conversation loop via role-injected messages. Replaces the 4-phase
 # subprocess orchestrator with one autonomous agent run.
 
