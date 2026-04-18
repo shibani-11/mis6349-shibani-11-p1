@@ -1,8 +1,6 @@
-# MIRA — Model Intelligence & Recommendation Agent
+# MIRA - Model Intelligence & Recommendation Agent
 
-**Shibani Kumar**
-
-MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business problem, it profiles the data, trains and compares models, stress-tests the best candidate, and delivers a deployment recommendation — all in a single continuous run without human intervention between phases.
+MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business problem, it profiles the data, trains and compares models, stress-tests the best candidate, and delivers a deployment recommendation, all in a single continuous run without human intervention between phases.
 
 ---
 
@@ -10,7 +8,7 @@ MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business 
 
 ### 1. What exactly does this agent do?
 
-MIRA is a fully autonomous 4-phase ML agent. Given any tabular dataset and a plain-English business problem, it profiles the data, selects and cross-validates candidate models, stress-tests the best candidate for overfitting and data leakage, and produces a structured deployment recommendation with business impact translation — all in a single uninterrupted run driven by a single LLM agent.
+MIRA is a fully autonomous 4-phase ML agent. Given any tabular dataset and a plain-English business problem, it profiles the data, selects and cross-validates candidate models, stress-tests the best candidate for overfitting and data leakage, and produces a structured deployment recommendation with business impact translation, all in a single uninterrupted run driven by a single LLM agent.
 
 It does not require a human to hand off results between phases. Phase transitions are gated by Chain-of-Thought reasoning blocks: the agent must cite specific numbers from the previous phase's output before it is allowed to continue.
 
@@ -18,7 +16,7 @@ It does not require a human to hand off results between phases. Phase transition
 
 ### 2. What goes in, what comes out?
 
-**Input** — configured via interactive CLI or `AgentInput` directly:
+**Input** - configured via interactive CLI or `AgentInput` directly:
 
 ```python
 AgentInput(
@@ -34,25 +32,56 @@ AgentInput(
 
 Supported formats: `.csv`, `.xlsx`, `.xls`, `.tsv`, `.parquet`, `.json`
 
-**Output** — four files written to `processed/`:
+**Output** - four files written to `processed/`:
 
 | File | Written by | Key contents |
 |---|---|---|
-| `{run_id}_data_card.json` | Phase 1 | rows, features, class distribution, imbalance flag, missing values, quality issues, recommended preprocessing |
-| `{run_id}_model_selection.json` | Phase 2 + 3 | per-model CV scores (AUC, F1, recall, precision), overfitting gap, leakage flag, stability flag, PASS/FAIL verdict |
-| `{run_id}_recommendation.json` | Phase 4 | ranked models, business impact, feature drivers, confidence score, executive summary with explicit YES/NO |
-| `{run_id}_eval_report.json` | Eval Runner | scores across all 7 eval layers, HITL decision, production readiness verdict |
+| `{run_id}_data_card.json` |   Phase 1   | rows, features, class distribution, imbalance flag, missing values, quality issues, recommended preprocessing |
+| `{run_id}_model_selection.json` |   Phase 2 + 3   | per-model CV scores (AUC, F1, recall, precision), overfitting gap, leakage flag, stability flag, PASS/FAIL verdict |
+| `{run_id}_recommendation.json` |   Phase 4   | ranked models, business impact, feature drivers, confidence score, executive summary with explicit YES/NO |
+| `{run_id}_eval_report.json` |   Eval Runner   | scores across all 7 eval layers, HITL decision, production readiness verdict |
 
 ---
 
 ### 3. What tools used and why?
 
-| Component | Role |
+**Agent Runtime (OpenHands SDK)**
+
+| Tool | What it does |
 |---|---|
-| **LiteLLM** | Routes LLM calls to any provider (`openai/gpt-4o-mini`, `anthropic/claude-*`, etc.) without code changes |
-| **Python execution** | The LLM agent writes and runs Python inside `RecommendationAgent` to compute real statistics — no hallucinated numbers |
-| **File I/O** | Outputs are written to `processed/` as structured JSON after each phase for auditability |
-| **Pydantic `AgentInput`** | Validates all user inputs at the boundary before the agent starts |
+| `TerminalTool` | Runs Python/bash — how the agent executes data profiling, model training, and writes output files |
+| `FileEditorTool` | Reads datasets, writes and edits the three output JSON files |
+| `TaskTrackerTool` | Signals run completion — terminates the agent loop when all phases are done |
+
+Registered in `agent/tools.py` and passed to the `Agent` on every run.
+
+**LLM & Routing**
+
+| Library | Role |
+|---|---|
+| `openhands-sdk` | Agent runtime (`Agent`, `LLM`, `Conversation`) |
+| `litellm` | Routes LLM calls to any provider without code changes |
+| `openai` | OpenAI API client (used via LiteLLM) |
+| `python-dotenv` | Loads `LLM_API_KEY` and `LLM_MODEL` from `.env` |
+
+**Data & ML**
+
+| Library | Role |
+|---|---|
+| `pandas` | Dataset loading and profiling |
+| `numpy` | Numerical operations |
+| `openpyxl` / `pyarrow` | Excel and Parquet format support |
+| `scikit-learn` | Logistic Regression, Random Forest, cross-validation, preprocessing |
+| `xgboost` | XGBoost model training |
+| `lightgbm` | LightGBM model training |
+| `imbalanced-learn` | SMOTE and resampling strategies for class imbalance |
+
+**Validation & Utilities**
+
+| Library | Role |
+|---|---|
+| `pydantic >= 2.0` | `AgentInput` schema — validates all inputs at the boundary |
+| `uuid` | Generates unique `run_id` for each run |
 
 No browser, no external APIs, no database connections. The agent operates entirely on local files. The minimal toolset reduces failure surface and keeps runs reproducible.
 
