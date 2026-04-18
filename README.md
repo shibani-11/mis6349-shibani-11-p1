@@ -34,7 +34,7 @@ Supported formats: `.csv`, `.xlsx`, `.xls`, `.tsv`, `.parquet`, `.json`
 
 **Output** - four files written to `processed/`:
 
-| File | Written by | Key contents |
+| File |   Written by   | Key contents |
 |---|---|---|
 | `{run_id}_data_card.json` |   Phase 1   | rows, features, class distribution, imbalance flag, missing values, quality issues, recommended preprocessing |
 | `{run_id}_model_selection.json` |   Phase 2 + 3   | per-model CV scores (AUC, F1, recall, precision), overfitting gap, leakage flag, stability flag, PASS/FAIL verdict |
