@@ -161,7 +161,7 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  RECOMMENDATION AGENT  (agent/recommendation_agent.py)          │
-│  Single LLM agent · prompt v0.3.0 · max 40 iterations          │
+│  Single LLM agent · prompt v0.4.1 · max 40 iterations          │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │ PHASE 1 — Data Analyst                                   │   │
@@ -220,6 +220,8 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
 
 | Version | File | Changes |
 |---|---|---|
+| v0.4.1 | `prompts/mira_agent_v0_4_1.md` | JSON schema templates (not Python scripts); short `SCHEMA OK` + assertion validation per phase; paths read from Run Context; gpt-4o model; LightGBM enforced |
+| v0.4.0 | `prompts/mira_agent_v0_4_0.md` | Full Python script templates per phase — retired, too long for gpt-4o-mini |
 | v0.3.0 | `prompts/mira_agent_v0_3_0.md` | CoT reasoning gates between phases (AutoML-GPT style); expanded model_selection and recommendation schemas; model candidate pool with inclusion/exclusion rules |
 
 See [prompts/README.md](prompts/README.md) for full prompt version history.

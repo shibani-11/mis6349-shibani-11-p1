@@ -315,7 +315,7 @@ def run_unit_tests() -> dict:
     print(f"\n  Unit Tests: {passed}/{tests_run} passed ({pct}%)")
     if failure_details:
         for f in failure_details:
-            print(f"    ✗ {f['test']}: {f['error']}")
+            print(f"    x {f['test']}: {f['error']}")
 
     return report
 

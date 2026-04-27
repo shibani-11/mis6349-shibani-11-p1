@@ -93,12 +93,12 @@ def run_all(filter_case: str = None) -> dict:
     print(f"{'='*65}")
 
     for r in results:
-        icon = "✅" if r["passed"] else "❌"
-        print(f"  {icon}  {r['case_id']}  {r['scenario']}")
+        icon = "PASS" if r["passed"] else "FAIL"
+        print(f"  [{icon}]  {r['case_id']}  {r['scenario']}")
         if not r["passed"]:
             for a in r["assertions"]:
                 if not a["passed"]:
-                    print(f"       ✗ {a['assertion']}: "
+                    print(f"       x {a['assertion']}: "
                           f"expected={a['expected']} got={a['actual']}")
 
     print(f"{'='*65}\n")

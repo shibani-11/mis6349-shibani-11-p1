@@ -24,7 +24,7 @@ class EvalRunner:
     Layer 2  — Quality eval     (cross-phase performance checks)
     Layer 3  — System eval      (orchestrator completion & timing)
     Layer 4  — Unit tests       (8 deterministic Phase 4 output checks)
-    Layer 5  — HITL gate        (7 risk factors → human review decision)
+    Layer 5  — HITL gate        (7 risk factors -> human review decision)
     Layer 6  — Production       (7-item production readiness checklist)
     Layer 7  — LLM Judge        (optional, runs JudgeAgent via OpenHands)
 
@@ -59,10 +59,10 @@ class EvalRunner:
         print(f"{'='*60}")
 
         # MIRA v0.3.0 writes: data_card, model_selection (Phase 2+3 combined), recommendation
-        data_card      = self._load("data_card")
+        data_card       = self._load("data_card")
         model_selection = self._load("model_selection")  # Phase 3 fields appended here
-        recommendation = self._load("recommendation")
-        orch = self._load_orch_log()
+        recommendation  = self._load("recommendation")
+        orch            = self._load_orch_log()
 
         # --- Layer 1: Behavior -------------------------------------------
         print("  [1/6] Behavior evals...")
@@ -176,37 +176,37 @@ class EvalRunner:
         print(f"\n{'='*60}")
         print(f"  MIRA EVAL RESULTS")
         print(f"{'='*60}")
-        status = "✅ PASSED" if report["overall_passed"] else "❌ FAILED"
-        print(f"  Overall Score    : {report['overall_score']}%  {status}")
+        status = "PASSED" if report["overall_passed"] else "FAILED"
+        print(f"  Overall Score    : {report['overall_score']}%  [{status}]")
         print(f"{'='*60}")
 
         def row(label, pct, passed):
-            icon = "✅" if passed else "⚠️ "
-            print(f"  {icon}  {label:<22} {pct}%")
+            icon = "PASS" if passed else "WARN"
+            print(f"  [{icon}]  {label:<22} {pct}%")
 
         row("Behavior Evals", s["behavior_avg_pct"], s["all_behavior_passed"])
         for phase, r in report["behavior_evals"].items():
-            icon = "✅" if r["passed"] else "❌"
-            print(f"       {icon} {phase:<25} {r['pct']}%")
+            icon = "PASS" if r["passed"] else "FAIL"
+            print(f"       [{icon}] {phase:<25} {r['pct']}%")
 
         row("Quality Eval", s["quality_pct"], s["quality_passed"])
         row("System Eval", s["system_pct"], s["system_passed"])
         row("Unit Tests", s["unit_tests_pct"], s["unit_tests_passed"])
         row("Prod Checklist", s["checklist_pct"], s["production_ready"])
 
-        hitl_icon = "⚠️ " if s["hitl_triggered"] else "✅"
         hitl_label = "TRIGGERED" if s["hitl_triggered"] else "not triggered"
-        print(f"  {hitl_icon}  {'HITL Gate':<22} {hitl_label}")
+        hitl_icon = "WARN" if s["hitl_triggered"] else "PASS"
+        print(f"  [{hitl_icon}]  {'HITL Gate':<22} {hitl_label}")
 
         if s["judge_verdict"] and s["judge_verdict"] != "NOT_RUN":
             j_score = s.get("judge_score", "?")
             j_verdict = s["judge_verdict"]
-            j_icon = "✅" if j_verdict == "APPROVED" else "⚠️ "
-            print(f"  {j_icon}  {'LLM Judge':<22} {j_verdict}  ({j_score}/10)")
+            j_icon = "PASS" if j_verdict == "APPROVED" else "WARN"
+            print(f"  [{j_icon}]  {'LLM Judge':<22} {j_verdict}  ({j_score}/10)")
 
         print(f"{'='*60}")
-        print(f"  Production Ready : "
-              f"{'✅ YES' if s['production_ready'] else '❌ NO'}")
+        prod_label = "YES" if s["production_ready"] else "NO"
+        print(f"  Production Ready : {prod_label}")
         print(f"{'='*60}")
         print(f"  Report: processed/{report['run_id']}_eval_report.json")
         print(f"{'='*60}\n")

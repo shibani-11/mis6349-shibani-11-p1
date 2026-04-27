@@ -126,7 +126,7 @@ Use the file editor tool to write this JSON to the path above. Do nothing else.
         recommendation = self._load("recommendation")
 
         if not recommendation:
-            print("  ✗ No recommendation output found — skipping judge")
+            print("  No recommendation output found — skipping judge")
             return {
                 "run_id": self.run_id,
                 "error": "no_recommendation",
@@ -153,13 +153,13 @@ Use the file editor tool to write this JSON to the path above. Do nothing else.
         if self.output_file.exists():
             self.success = True
             result = json.loads(self.output_file.read_text())
-            print(f"\n  ✓ Judge completed in {self.duration}s")
+            print(f"\n  Judge completed in {self.duration}s")
             print(f"  Verdict : {result.get('verdict', 'N/A')}  "
                   f"Score: {result.get('overall_score', 'N/A')}/10")
             return result
 
         self.success = False
-        print("  ✗ Judge failed — no output file written")
+        print("  Judge failed — no output file written")
         return {
             "run_id": self.run_id,
             "error": "no_output",
