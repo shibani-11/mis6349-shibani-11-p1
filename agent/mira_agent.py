@@ -173,27 +173,33 @@ python3 scripts/Modeltrain.py --cleaned-data {cleaned} --data-card {data_card} -
 After Phase 1: verify `SCHEMA OK` is printed.
 After Phase 2: verify `SCHEMA OK` is printed.
 
-**Phase 3 — Deployment Recommendation (mira-recommend skill):**
-```
-/mira-recommend
-Data card:        {data_card}
-Model selection:  {model_sel}
-Output:           {recommendation}
-```
+**Phase 3 — Deployment Recommendation:**
 
-After Phase 3: verify `RECOMMENDATION OK` is printed.
+After Phase 2 is complete, generate the recommendation report by following the mira-recommend skill instructions in your available skills. Use:
+- TerminalTool to read `{data_card}` and `{model_sel}`
+- FileEditorTool to write `{recommendation}`
 
+After writing the file, print `RECOMMENDATION OK`.
 Call TaskTracker once all three phases are complete.
 """
 
     def _recommendation_push(self) -> str:
+        data_card   = self._path("data_card")
+        model_sel   = self._path("model_selection")
+        recommend   = self._path("recommendation")
         return (
-            f"Phase 1 and Phase 2 are complete. Now invoke the mira-recommend skill.\n\n"
-            f"/mira-recommend\n"
-            f"Data card:        {self._path('data_card')}\n"
-            f"Model selection:  {self._path('model_selection')}\n"
-            f"Output:           {self._path('recommendation')}\n\n"
-            f"Follow the skill instructions exactly. Print RECOMMENDATION OK when done."
+            f"Phases 1 and 2 are complete. Now generate the deployment recommendation report (Phase 3).\n\n"
+            f"Follow the mira-recommend skill instructions listed in your available skills.\n\n"
+            f"Step 1 — Read the output files using TerminalTool:\n"
+            f"  cat {data_card}\n"
+            f"  cat {model_sel}\n\n"
+            f"Step 2 — Compute the required fields (confidence_score, requires_human_review, "
+            f"all_models_summary, test_verdict_summary, deploy_word) exactly as specified in the skill.\n\n"
+            f"Step 3 — Write the recommendation JSON to:\n"
+            f"  {recommend}\n"
+            f"Use FileEditorTool to write the file. The JSON must include ALL required keys from the skill schema.\n\n"
+            f"Step 4 — Print: RECOMMENDATION OK\n\n"
+            f"Then call TaskTracker to finish."
         )
 
     def _log_decision(self, decision: str, reason: str):

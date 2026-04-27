@@ -121,7 +121,7 @@ def clear_results(output_path: str):
     folder.mkdir(exist_ok=True)
     cleared = [
         f for f in folder.iterdir()
-        if f.is_file() and f.suffix == ".json"
+        if f.is_file() and f.suffix in (".json", ".csv")
     ]
     for f in cleared:
         f.unlink()

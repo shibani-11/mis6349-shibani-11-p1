@@ -85,20 +85,15 @@ SCHEMA OK
 
 ## Phase 3 — Deployment Recommendation (mira-recommend skill)
 
-After Phase 2 is complete and `SCHEMA OK` is confirmed, invoke the mira-recommend skill:
+After Phase 2 is complete and `SCHEMA OK` is confirmed, generate the recommendation report.
 
-```
-/mira-recommend
-Data card:        {DATA_CARD}
-Model selection:  {MODEL_SELECTION}
-Output:           {RECOMMENDATION}
-```
-
-Follow the skill instructions exactly. The skill will guide you to:
-1. Read data_card.json and model_selection.json
-2. Compute deterministic fields (confidence_score, requires_human_review, etc.)
-3. Write recommendation.json with all required keys
+Follow the **mira-recommend** skill instructions listed in your available skills. The skill will guide you to:
+1. Use TerminalTool to read data_card.json and model_selection.json
+2. Compute deterministic fields (confidence_score, requires_human_review, all_models_summary, etc.)
+3. Use FileEditorTool to write recommendation.json with all required keys
 4. Print `RECOMMENDATION OK` when done
+
+Do NOT run `/mira-recommend` as a shell command — it is a skill, not a script.
 
 ---
 
