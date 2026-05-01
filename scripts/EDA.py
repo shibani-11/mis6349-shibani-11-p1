@@ -24,7 +24,13 @@ parser.add_argument("--business-problem", required=False, default="", help="Busi
 args = parser.parse_args()
 
 target = args.target
-df = pd.read_csv(args.dataset)
+_ext = pathlib.Path(args.dataset).suffix.lower()
+if _ext in (".xls", ".xlsx"):
+    df = pd.read_excel(args.dataset)
+elif _ext == ".csv":
+    df = pd.read_csv(args.dataset)
+else:
+    raise ValueError(f"Unsupported file type '{_ext}'. Supported: .csv, .xls, .xlsx")
 
 cleaning_log    = []   # human-readable steps taken
 data_quality_issues = []
@@ -301,11 +307,14 @@ No markdown. No explanation outside the JSON."""
         if metric not in VALID_METRICS:
             metric = "roc_auc"
             reason = f"LLM returned unknown metric — defaulted to roc_auc."
-        return metric, reason
+        usage = getattr(response, "usage", None)
+        prompt_tokens     = getattr(usage, "prompt_tokens", 0) or 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+        return metric, reason, prompt_tokens, completion_tokens
     except Exception as e:
-        return "roc_auc", f"Metric inference failed ({e}) — defaulted to roc_auc."
+        return "roc_auc", f"Metric inference failed ({e}) — defaulted to roc_auc.", 0, 0
 
-priority_metric, metric_reason = infer_priority_metric(
+priority_metric, metric_reason, eda_prompt_tokens, eda_completion_tokens = infer_priority_metric(
     args.business_problem, class_imbalance_detected, minority_class_ratio
 )
 print(f"  Priority metric: {priority_metric}")
@@ -334,6 +343,11 @@ out = {
     "cleaning_log":              cleaning_log,
     "priority_metric":           priority_metric,
     "metric_reason":             metric_reason,
+    "eda_llm_tokens": {
+        "prompt_tokens":     eda_prompt_tokens,
+        "completion_tokens": eda_completion_tokens,
+        "total_tokens":      eda_prompt_tokens + eda_completion_tokens,
+    },
 }
 
 REQUIRED_KEYS = [

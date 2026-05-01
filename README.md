@@ -218,13 +218,9 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
 
 ## Current Prompt Version
 
-| Version | File | Changes |
-|---|---|---|
-| v0.4.1 | `prompts/mira_agent_v0_4_1.md` | JSON schema templates (not Python scripts); short `SCHEMA OK` + assertion validation per phase; paths read from Run Context; gpt-4o model; LightGBM enforced |
-| v0.4.0 | `prompts/mira_agent_v0_4_0.md` | Full Python script templates per phase — retired, too long for gpt-4o-mini |
-| v0.3.0 | `prompts/mira_agent_v0_3_0.md` | CoT reasoning gates between phases (AutoML-GPT style); expanded model_selection and recommendation schemas; model candidate pool with inclusion/exclusion rules |
+`v0.5.0` — DECIDING mode: reasoning-based confidence score, three-zone HITL gate, flags[], mira-recommend AgentSkill.
 
-See [prompts/README.md](prompts/README.md) for full prompt version history.
+See [prompts/README.md](prompts/README.md) for full version changelog.
 
 ---
 
@@ -294,11 +290,11 @@ pytest tests/ -v
 
 | Bar | Status | Notes |
 |---|---|---|
-| Versioned prompts | ✅ | v0.3.0 active — CoT-guided, full schema enforcement |
-| Error handling | ✅ | Script errors caught and retried by the agent |
-| Observability | ✅ | Run logs in `logs/runs/`, eval report in `processed/` |
-| Scope enforcement | ✅ | `max_iterations=40` configured in AgentInput |
-| Output validation | ✅ | Pydantic input schema + 7-layer eval system |
-| Test coverage | ✅ | 18 unit tests + 6 automated eval layers per run |
-| CoT reasoning | ✅ | Phase transitions gated on explicit reasoning blocks |
-| HITL gate | ✅ | 7 risk factors trigger human review flag automatically |
+| Versioned prompts | ✅ | v0.5.0 active — DECIDING mode, CoT-guided, full schema enforcement |
+| Error handling | ✅ | `agent/runner.py` — run_with_retry, run_with_validation, run_with_fallback |
+| Observability | ✅ | `agent/logger.py` RunLogger · logs in `logs/runs/` + `logs/samples/` |
+| Scope enforcement | ✅ | `max_iterations=40` in AgentInput · explicit tool list |
+| Output validation | ✅ | `agent/validator.py` + Pydantic schemas + 7-layer eval system |
+| Test coverage | ✅ | 4 test files · 25+ tests covering happy path, edge cases, retry, schema |
+| HITL gate | ✅ | Three-zone approval gate · override log · rubber-stamp prevention |
+| Confidence threshold | ✅ | Reasoning-based score · zone routing · flags[] · escalation rules |

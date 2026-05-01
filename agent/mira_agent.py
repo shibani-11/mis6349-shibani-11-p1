@@ -41,8 +41,8 @@ REQUIRED_KEYS = {
         "all_models_summary", "model_comparison_narrative", "business_impact",
         "tradeoffs", "alternative_model", "alternative_model_reason", "next_steps",
         "deployment_considerations", "risks", "test_verdict_summary",
-        "feature_drivers", "confidence_score", "requires_human_review",
-        "human_review_reason", "executive_summary",
+        "feature_drivers", "confidence_score", "routing_zone", "flags",
+        "requires_human_review", "human_review_reason", "executive_summary",
     ],
 }
 
@@ -303,6 +303,23 @@ Call TaskTracker once all three phases are complete.
         self._write_log(data_card, model_sel, recommend)
         return {"data_card": data_card, "model_selection": model_sel, "recommendation": recommend}
 
+    def _build_cost_summary(self, data_card: dict) -> dict:
+        eda_tokens = data_card.get("eda_llm_tokens", {}) if data_card else {}
+        prompt_tok     = eda_tokens.get("prompt_tokens", 0)
+        completion_tok = eda_tokens.get("completion_tokens", 0)
+        total_tok      = eda_tokens.get("total_tokens", 0)
+        # gpt-4o-mini pricing: $0.15/1M prompt, $0.60/1M completion (as of May 2026)
+        cost_usd = round(
+            (prompt_tok / 1_000_000) * 0.15 + (completion_tok / 1_000_000) * 0.60, 6
+        )
+        return {
+            "eda_prompt_tokens":     prompt_tok,
+            "eda_completion_tokens": completion_tok,
+            "eda_total_tokens":      total_tok,
+            "eda_cost_usd":          cost_usd,
+            "note": "EDA metric inference call only; agent iteration tokens not tracked.",
+        }
+
     def _write_log(self, data_card: dict, model_sel: dict, recommend: dict):
         log = {
             "agent": "MIRA v0.5.0",
@@ -322,6 +339,7 @@ Call TaskTracker once all three phases are complete.
             "confidence_score":      recommend.get("confidence_score") if recommend else None,
             "requires_human_review": recommend.get("requires_human_review") if recommend else None,
             "test_verdict":          model_sel.get("test_verdict") if model_sel else None,
+            "cost_tracking": self._build_cost_summary(data_card),
             "decisions": self.decisions,
         }
         log_path = Path("logs/runs") / f"{self.run_id}_run.json"
