@@ -1,0 +1,23 @@
+{
+  "run_id": "run_416c2cc4",
+  "timestamp": "2026-05-02T00:57:35.617441",
+  "routing_zone": "zone_2",
+  "escalation_rules_triggered": [
+    "AMBIGUOUS_MODEL_SELECTION",
+    "METRIC_OBJECTIVE_MISMATCH"
+  ],
+  "agent_recommendation": {
+    "recommended_model": null,
+    "primary_metric_value": null,
+    "confidence_score": null,
+    "flags": [],
+    "requires_human_review": null,
+    "human_review_reason": null
+  },
+  "human_decision": "APPROVED",
+  "override_category": "PERFORMANCE_ACCEPTABLE",
+  "human_rationale": "I accept the performance at this moment",
+  "review_duration_seconds": 98.8,
+  "agent_version": "MIRA v0.5.0",
+  "prompt_version": "mira_agent_v0_5_0.md"
+}
