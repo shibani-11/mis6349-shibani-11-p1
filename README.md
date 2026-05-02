@@ -1,6 +1,6 @@
 # MIRA - Model Intelligence & Recommendation Agent
 
-MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business problem, it profiles the data, trains and compares models, stress-tests the best candidate, and delivers a deployment recommendation, all in a single continuous run without human intervention between phases.
+MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business problem, it profiles the data, trains and stress-tests candidate models, and delivers a structured deployment recommendation — with a built-in three-zone human approval gate before anything is finalized.
 
 ---
 
@@ -8,15 +8,19 @@ MIRA is a fully autonomous multi-phase ML agent. Given a dataset and a business 
 
 ### 1. What exactly does this agent do?
 
-MIRA is a fully autonomous 4-phase ML agent. Given any tabular dataset and a plain-English business problem, it profiles the data, selects and cross-validates candidate models, stress-tests the best candidate for overfitting and data leakage, and produces a structured deployment recommendation with business impact translation, all in a single uninterrupted run driven by a single LLM agent.
+MIRA is a fully autonomous 3-phase ML agent. Given any tabular dataset and a plain-English business problem, it:
 
-It does not require a human to hand off results between phases. Phase transitions are gated by Chain-of-Thought reasoning blocks: the agent must cite specific numbers from the previous phase's output before it is allowed to continue.
+1. **Profiles the data** and infers the right evaluation metric from the business problem using an LLM function call
+2. **Trains 5 models** with 5-fold cross-validation and runs three stress tests (overfitting, leakage, stability) on every candidate
+3. **Reasons over the results** using a versioned LLM AgentSkill and writes a structured deployment recommendation with confidence score, routing zone, flags, and a plain-English executive summary
+
+A three-zone HITL gate then routes the result: Zone 1 auto-proceeds, Zone 2 pauses for standard review, Zone 3 escalates for priority human review. Every decision is logged with rationale and review duration for audit.
 
 ---
 
 ### 2. Input and Output
 
-**Input** - configured via interactive CLI or `AgentInput` directly:
+**Input** — configured via Streamlit UI or `AgentInput` directly:
 
 ```python
 AgentInput(
@@ -26,40 +30,49 @@ AgentInput(
     task_type="auto",
     max_models=5,
     max_iterations=40,
-    extra_context={"priority_metric": "roc_auc"}
 )
 ```
 
-Supported formats: `.csv`, `.xlsx`, `.xls`, `.tsv`, `.parquet`, `.json`
+Supported formats: `.csv`, `.xlsx`, `.xls`
 
-**Output** - four files written to `processed/`:
+**Output** — four files written to `processed/`:
 
-| File |   Written by   | Key contents |
+| File | Written by | Key contents |
 |---|---|---|
-| `{run_id}_data_card.json` |   Phase 1   | rows, features, class distribution, imbalance flag, missing values, quality issues, recommended preprocessing |
-| `{run_id}_model_selection.json` |   Phase 2 + 3   | per-model CV scores (AUC, F1, recall, precision), overfitting gap, leakage flag, stability flag, PASS/FAIL verdict |
-| `{run_id}_recommendation.json` |   Phase 4   | ranked models, business impact, feature drivers, confidence score, executive summary with explicit YES/NO |
-| `{run_id}_eval_report.json` |   Eval Runner   | scores across all 7 eval layers, HITL decision, production readiness verdict |
+| `{run_id}_data_card.json` | Phase 1 — EDA.py | rows, features, class distribution, imbalance flag, missing values, quality issues, priority metric + reason, LLM token usage |
+| `{run_id}_model_selection.json` | Phase 2 — Modeltrain.py | per-model CV scores (AUC, F1, recall, precision), overfitting gap, leakage flag, stability flag, PASS/FAIL verdict, feature importance |
+| `{run_id}_recommendation.json` | Phase 3 — MIRAAgent | recommended model, selection reason, confidence score, routing zone, flags, business impact, next steps, risks, executive summary with YES/NO verdict |
+| `{run_id}_eval_report.json` | Eval Runner | scores across all 7 eval layers, HITL risk score, production readiness verdict |
 
 ---
 
-### 3. What tools used and why?
+### 3. What tools are used and why?
 
-**Agent Runtime (OpenHands SDK)**
+**Phase 1 & 2 — Subprocess scripts**
+
+Phases 1 and 2 run as independent Python subprocesses called from the orchestrator or Streamlit UI. This keeps them isolated, fast, and independently testable.
+
+| Script | What it does |
+|---|---|
+| `scripts/EDA.py` | Loads and cleans the dataset, profiles features, calls gpt-4o-mini to infer the priority metric from the business problem text, writes `data_card.json` |
+| `scripts/Modeltrain.py` | Trains 5 models with 5-fold stratified CV, runs overfitting / leakage / stability stress tests, writes `model_selection.json` |
+
+**Phase 3 — OpenHands Agent**
+
+Phase 3 runs `MIRAAgent` in `agent/mira_agent.py` using the OpenHands SDK.
 
 | Tool | What it does |
 |---|---|
-| `TerminalTool` | needed for the agent, executes data profiling, model training, and writes output files |
-| `FileEditorTool` | Reads datasets, writes and edits the three output JSON files |
-| `TaskTrackerTool` | Signals run completion — terminates the agent loop when all phases are done |
-
-Registered in `agent/tools.py` and passed to the `Agent` on every run.
+| `TerminalTool` | Executes commands and reads phase outputs |
+| `FileEditorTool` | Reads phase 1 & 2 JSON files, writes `recommendation.json` |
+| `TaskTrackerTool` | Signals run completion, terminates the agent loop |
+| `mira-recommend` AgentSkill | Versioned prompt skill (`prompts/SKILL.md`) injected into Phase 3 context |
 
 **LLM & Routing**
 
 | Library | Role |
 |---|---|
-| `openhands-sdk` | Agent runtime (`Agent`, `LLM`, `Conversation`) |
+| `openhands-sdk` | Agent runtime for Phase 3 (`LLM`, `Agent`, `Skill`) |
 | `litellm` | Routes LLM calls to any provider without code changes |
 | `openai` | OpenAI API client (used via LiteLLM) |
 | `python-dotenv` | Loads `LLM_API_KEY` and `LLM_MODEL` from `.env` |
@@ -70,11 +83,11 @@ Registered in `agent/tools.py` and passed to the `Agent` on every run.
 |---|---|
 | `pandas` | Dataset loading and profiling |
 | `numpy` | Numerical operations |
-| `openpyxl` / `pyarrow` | Excel and Parquet format support |
+| `openpyxl` | Excel format support |
 | `scikit-learn` | Logistic Regression, Random Forest, cross-validation, preprocessing |
 | `xgboost` | XGBoost model training |
 | `lightgbm` | LightGBM model training |
-| `imbalanced-learn` | SMOTE and resampling strategies for class imbalance |
+| `imbalanced-learn` | SMOTE and resampling strategies (available, not applied by default) |
 
 **Validation & Utilities**
 
@@ -82,23 +95,22 @@ Registered in `agent/tools.py` and passed to the `Agent` on every run.
 |---|---|
 | `pydantic >= 2.0` | `AgentInput` schema, validates all inputs at the boundary |
 | `uuid` | Generates unique `run_id` for each run |
-
-No browser, no external APIs, no database connections. The agent operates entirely on local files. The minimal toolset reduces failure surface and keeps runs reproducible.
+| `streamlit` | Web UI for upload, live run progress, HITL gate, and results |
 
 ---
 
 ### 4. Success Criteria
 
-MIRA self-evaluates after every run across 7 layers:
+MIRA self-evaluates after every approved run across 7 layers:
 
 | Layer | What it checks | Pass bar |
 |---|---|---|
 | Behavior Evals | Required fields present, key values computed in each phase | ≥ 70% per phase |
-| Quality Eval | Best model ≥ 0.65 AUC, Phase 3 passed, recommendation produced | ≥ 70% |
-| System Eval | All 3 phases completed, no errors, run < 1 hour | ≥ 70% |
+| Quality Eval | Best model ≥ 0.65 AUC, stress tests passed, recommendation produced | ≥ 70% |
+| System Eval | All phases completed, no errors, agents tracked | ≥ 70% |
 | Unit Tests | 18 deterministic checks on recommendation schema (keys, types, ranges) | 100% |
-| HITL Gate | 7 weighted risk factors : leakage (5), poor performance (4), overfitting (2), low confidence (2), etc. | Risk score < 5 |
-| Production Checklist | 7 items; 3 critical items (leakage, overfitting, AUC floor) block deployment if failed | ≥ 6/7 + all critical |
+| HITL Gate | 7 weighted risk factors: leakage, overfitting, low confidence, ambiguous selection | Risk score < 5 |
+| Production Checklist | 7 items; 3 critical (leakage, overfitting, AUC floor) block deployment if failed | ≥ 6/7 + all critical |
 | LLM Judge | Independent LLM grades reasoning quality and schema compliance | Reported separately |
 
 Overall pass = mean of Layers 1–4 + 6. Each run leaves a complete audit trail in `processed/{run_id}_eval_report.json`.
@@ -107,44 +119,47 @@ Overall pass = mean of Layers 1–4 + 6. Each run leaves a complete audit trail 
 
 ### 5. What are the three most likely ways it fails?
 
-**1. LLM skips Phase 3 (stress-testing) and jumps straight to Phase 4**
+**1. Phase 3 produces a recommendation with missing required fields**
 
-Detection: `phases_completed` in the orchestrator log will be missing `model_selection` test fields (`overfitting_detected`, `leakage_detected`, `test_verdict`). The System Eval and Behavior Eval will both fail.
+Detection: `agent/validator.py → validate_output()` checks all 20 required keys before the result is accepted. The Production Checklist item `all_required_fields_present` flags any that are `None`, empty strings, or empty lists.
 
-Response: The CoT reasoning gate in v0.3.0 forces the agent to explicitly write the overfitting gap, leakage result, and stability check before it can proceed. If the gate is not filled, the phase transition is blocked.
+Response: `agent/runner.py → run_with_validation()` sends one self-correction prompt if validation fails. If it still fails, `run_with_fallback()` routes to `_route_to_human_review()` with `confidence_score: 0.0` and `flags: ["ESCALATED"]`.
 
-**2. LLM hallucinates metric values instead of computing them**
+**2. LLM infers the wrong evaluation metric from the business problem**
 
-Detection: Unit Tests check that `confidence_score` is a float in [0, 1], `primary_metric_value` is present, and `selection_reason` is substantive. The Quality Eval cross-checks that the best reported AUC ≥ 0.65. Fabricated numbers will often fail range checks or be internally inconsistent.
+Detection: The inferred metric and its reasoning are stored in `data_card.json` under `priority_metric` and `metric_reason`. The LLM token usage is tracked in `eda_llm_tokens`. A human reviewer can inspect the metric choice at the HITL gate.
 
-Response: The v0.3.0 prompt instructs the agent to execute Python code to compute all statistics before writing any JSON. The HITL gate adds a second layer — low-confidence or borderline results automatically set `requires_human_review = True`.
+Response: The HITL `METRIC_MISMATCH` override category allows a reviewer to explicitly flag and override a wrong metric inference. The override is logged with rationale to `logs/overrides/`.
 
-**3. Output JSON is malformed or missing required fields**
+**3. Top-2 models are too close to call**
 
-Detection: The Production Checklist item `all_required_fields_present` checks all 17 required keys and flags any that are `None`, empty strings, or empty lists. Unit Test UT-01 (`TestPhase4RequiredKeys`) checks the same set deterministically on every run.
+Detection: `agent/escalation_rules.py → evaluate_escalation_rules()` triggers `AMBIGUOUS_MODEL_SELECTION` if the top-2 models differ by < 0.005 on the primary metric. The HITL gate risk score increases and the run is routed to Zone 2 or Zone 3.
 
-Response: `max_iterations=40` gives the agent budget to retry and self-correct. If fields are still missing after retries, the Production Checklist critical-item failures block the `production_ready` flag from being set.
+Response: The human reviewer sees the full model leaderboard and metric breakdown and must provide an explicit override rationale before the recommendation proceeds.
 
 ---
 
 ## How It Works
 
-MIRA drives itself through four personas in sequence. Each phase produces auditable output before the next begins.
+MIRA runs three sequential phases. Each phase produces auditable JSON output before the next begins.
 
 ```
-Phase 1 — Data Analyst       →  data_card.json
-Phase 2 — ML Engineer        →  model_selection.json
-Phase 3 — ML Test Engineer   →  (appends to model_selection.json)
-Phase 4 — Data Scientist     →  recommendation.json
+Phase 1 — EDA.py          →  data_card.json        (data profile + priority metric)
+Phase 2 — Modeltrain.py   →  model_selection.json  (model scores + stress test results)
+Phase 3 — MIRAAgent       →  recommendation.json   (deployment recommendation)
+                          ↓
+          EvalRunner       →  eval_report.json      (7-layer evaluation)
 ```
 
-Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (AutoML-GPT, Zhang et al. 2023). Before moving to the next phase, the agent must write an explicit reasoning paragraph referencing specific numbers from the previous output. If it cannot fill in those numbers, it has not completed the prior phase and cannot proceed.
+**Phase 1** cleans the data (IQR outlier capping, column drops, label encoding, StandardScaler) and calls `gpt-4o-mini` via LiteLLM to infer which evaluation metric — recall, precision, F1, or AUC — best matches the business problem text.
+
+**Phase 2** trains all 5 candidate models with stratified 5-fold CV. After training, every model goes through three stress tests: overfitting gap check (threshold 0.10), leakage check (AUC < 0.99), and stability check (CV std < 0.05). The winner and runner-up are selected by the inferred metric. Rejected models are recorded with a reason.
+
+**Phase 3** loads the data card and model selection JSON as context and runs the `mira-recommend` AgentSkill (prompt v0.5.0, DECIDING mode). The LLM reasons over all results and writes a 20-field recommendation including `confidence_score`, `routing_zone`, `flags[]`, and an executive summary with an explicit YES/NO deployment verdict.
 
 ---
 
 ## Architecture
-
-### Agent Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -154,77 +169,63 @@ Phase transitions are governed by **Chain-of-Thought (CoT) reasoning blocks** (A
                             │  AgentInput (Pydantic validation)
                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  ORCHESTRATOR  (agent/orchestrator.py)                          │
-│  Boots the agent · writes run log to logs/runs/                 │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  RECOMMENDATION AGENT  (agent/recommendation_agent.py)          │
-│  Single LLM agent · prompt v0.4.1 · max 40 iterations          │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │ PHASE 1 — Data Analyst                                   │   │
-│  │ • Load dataset, compute shape, class distribution        │   │
-│  │ • Detect missing values, outliers, high cardinality      │   │
-│  │ • Identify class imbalance, top correlated features      │   │
-│  │ • Write ➜  {run_id}_data_card.json                       │   │
-│  └────────────────────────┬─────────────────────────────────┘   │
-│                           │  CoT Reasoning Gate                 │
-│                           │  (must cite rows, minority %, etc.) │
-│  ┌────────────────────────▼─────────────────────────────────┐   │
-│  │ PHASE 2 — ML Engineer                                    │   │
-│  │ • Select candidate models from pool (LR, RF, XGB, LGBM) │   │
-│  │ • 5-fold cross-validation, class_weight='balanced'       │   │
-│  │ • Record cv_roc_auc, f1, recall, precision per model     │   │
-│  │ • Write ➜  {run_id}_model_selection.json                 │   │
-│  └────────────────────────┬─────────────────────────────────┘   │
-│                           │  CoT Reasoning Gate                 │
-│                           │  (must cite AUC scores, gaps)       │
-│  ┌────────────────────────▼─────────────────────────────────┐   │
-│  │ PHASE 3 — ML Test Engineer                               │   │
-│  │ • Check overfitting  (train_score − val_score > 0.10?)   │   │
-│  │ • Check data leakage (any feature perfectly predictive?) │   │
-│  │ • Check stability    (cv_roc_auc_std > 0.05?)            │   │
-│  │ • Append test_verdict + findings to model_selection.json │   │
-│  └────────────────────────┬─────────────────────────────────┘   │
-│                           │  CoT Reasoning Gate                 │
-│                           │  (must cite PASS/FAIL + reason)     │
-│  ┌────────────────────────▼─────────────────────────────────┐   │
-│  │ PHASE 4 — Data Scientist                                 │   │
-│  │ • Rank all models, justify winner with data              │   │
-│  │ • Translate to business impact (retention, revenue, etc) │   │
-│  │ • Surface top feature drivers in plain English           │   │
-│  │ • Write ➜  {run_id}_recommendation.json                  │   │
-│  └────────────────────────┬─────────────────────────────────┘   │
-└───────────────────────────┼─────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  EVAL RUNNER  (evals/eval_runner.py)                            │
-│                                                                 │
-│  Layer 1 · Behavior    per-phase structure checks     ≥ 70%    │
-│  Layer 2 · Quality     cross-phase performance floor  ≥ 70%    │
-│  Layer 3 · System      orchestrator health & timing   ≥ 70%    │
-│  Layer 4 · Unit Tests  18 deterministic schema tests  100%     │
-│  Layer 5 · HITL Gate   7 risk factors → human flag    < 5      │
-│  Layer 6 · Prod Check  7-item deployment readiness    ≥ 6/7    │
-│  Layer 7 · LLM Judge   independent LLM scoring        optional │
-│                                                                 │
-│  Write ➜  {run_id}_eval_report.json                            │
-└─────────────────────────────────────────────────────────────────┘
+│  STREAMLIT UI  (app.py)  or  CLI  (main.py)                     │
+│  Orchestrates phase transitions · writes run log                │
+└──────────┬────────────────┬────────────────┬────────────────────┘
+           │                │                │
+           ▼                ▼                ▼
+┌──────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
+│ PHASE 1      │  │ PHASE 2          │  │ PHASE 3                 │
+│ scripts/     │  │ scripts/         │  │ agent/mira_agent.py     │
+│ EDA.py       │  │ Modeltrain.py    │  │ OpenHands SDK           │
+│              │  │                  │  │ mira-recommend Skill    │
+│ - Clean data │  │ - Train 5 models │  │ - Context injection     │
+│ - Profile    │  │ - 5-fold CV      │  │ - LLM reasoning         │
+│ - LLM metric │  │ - Stress tests   │  │ - 20-field output       │
+│   inference  │  │   (overfit,      │  │ - validate_output()     │
+│              │  │    leakage,      │  │                         │
+│              │  │    stability)    │  │                         │
+└──────┬───────┘  └────────┬─────────┘  └────────────┬────────────┘
+       │                   │                          │
+       ▼                   ▼                          ▼
+ data_card.json    model_selection.json       recommendation.json
+                                                      │
+                                                      ▼
+                                         ┌────────────────────────┐
+                                         │  HITL GATE             │
+                                         │  Zone 1 → auto-proceed │
+                                         │  Zone 2 → review       │
+                                         │  Zone 3 → escalate     │
+                                         └────────────┬───────────┘
+                                                      │ approved
+                                                      ▼
+                                         ┌────────────────────────┐
+                                         │  EVAL RUNNER           │
+                                         │  evals/eval_runner.py  │
+                                         │                        │
+                                         │  1. Behavior evals     │
+                                         │  2. Quality eval       │
+                                         │  3. System eval        │
+                                         │  4. Unit tests (18)    │
+                                         │  5. HITL gate risk     │
+                                         │  6. Prod checklist     │
+                                         │  7. LLM judge          │
+                                         └────────────┬───────────┘
+                                                      ▼
+                                              eval_report.json
 ```
 
+---
 
 ## Current Prompt Version
 
-`v0.5.0` — DECIDING mode: reasoning-based confidence score, three-zone HITL gate, flags[], mira-recommend AgentSkill.
+`v0.5.0` — DECIDING mode: reasoning-based confidence score, three-zone HITL gate, `flags[]`, `mira-recommend` AgentSkill.
 
 See [prompts/README.md](prompts/README.md) for full version changelog.
 
 ---
 
-## How to Run and Setup 
+## How to Run
 
 **1. Clone and install**
 ```bash
@@ -245,31 +246,44 @@ Supported model strings (via LiteLLM): `openai/gpt-4o`, `openai/gpt-4o-mini`, `a
 
 **3. Add your dataset**
 ```
-data/raw/your_dataset.csv
+data/raw/your_dataset.csv      # or .xls / .xlsx
 ```
 
-**4. Run MIRA**
+**4. Run via Streamlit UI (recommended)**
 ```bash
-python -m agent.main
+streamlit run app.py
 ```
+Open `http://localhost:8501` in your browser. Upload your dataset, select the target column, describe the business problem, and click Run MIRA.
 
-The CLI will auto-detect your dataset, show column names, and prompt for the target column and business problem.
-
-**5. Re-run evals on the last completed run**
+**5. Run via CLI**
 ```bash
-python -m agent.main evals
+python main.py --dataset data/raw/Churn_Modelling.csv --target Exited --problem "Identify customers likely to churn."
 ```
 
-**6. Output location**
+**6. Re-run evals on an existing run**
+```bash
+python -m evals.run_evals --run-id run_bc710c55
+```
+
+**7. Analyse run logs**
+```bash
+python scripts/analyze_logs.py --log-dir logs/runs/
+```
+
+**8. Output locations**
 ```
 processed/
   {run_id}_data_card.json
   {run_id}_model_selection.json
   {run_id}_recommendation.json
   {run_id}_eval_report.json
+  {run_id}_cleaned.csv
 
 logs/runs/
-  {run_id}_orchestrator.json
+  {run_id}_run.json
+
+logs/overrides/
+  {run_id}_override.json     # written only when a human reviewer submits a decision
 ```
 
 ---
@@ -280,8 +294,13 @@ logs/runs/
 # Unit tests only (18 tests, no LLM required)
 python -m pytest evals/unit_tests.py -v
 
-# All tests
+# All tests (25+ tests)
 pytest tests/ -v
+
+# Specific test file
+pytest tests/test_happy_path.py -v
+pytest tests/test_edge_cases.py -v
+pytest tests/test_retry.py -v
 ```
 
 ---
@@ -290,11 +309,11 @@ pytest tests/ -v
 
 | Bar | Status | Notes |
 |---|---|---|
-| Versioned prompts | ✅ | v0.5.0 active — DECIDING mode, CoT-guided, full schema enforcement |
-| Error handling | ✅ | `agent/runner.py` — run_with_retry, run_with_validation, run_with_fallback |
-| Observability | ✅ | `agent/logger.py` RunLogger · logs in `logs/runs/` + `logs/samples/` |
-| Scope enforcement | ✅ | `max_iterations=40` in AgentInput · explicit tool list |
-| Output validation | ✅ | `agent/validator.py` + Pydantic schemas + 7-layer eval system |
-| Test coverage | ✅ | 4 test files · 25+ tests covering happy path, edge cases, retry, schema |
-| HITL gate | ✅ | Three-zone approval gate · override log · rubber-stamp prevention |
-| Confidence threshold | ✅ | Reasoning-based score · zone routing · flags[] · escalation rules |
+| Versioned prompts | ✅ | v0.5.0 active — DECIDING mode, full schema enforcement, changelog in `prompts/README.md` |
+| Error handling | ✅ | `agent/runner.py` — `run_with_retry` (3 attempts, backoff), `run_with_validation` (self-correction), `run_with_fallback` (human escalation) |
+| Observability | ✅ | `agent/logger.py` — `RunLogger` writes to `logs/runs/`; cost tracking in `_run.json` |
+| Scope enforcement | ✅ | `max_iterations=40` in `AgentInput`; explicit tool list in `MIRAAgent._tools()` |
+| Output validation | ✅ | `agent/validator.py` — 20-key schema enforced before result accepted; 7-layer eval system |
+| Test coverage | ✅ | 4 test files · 25+ tests — happy path, edge cases, retry logic, schema validation |
+| HITL gate | ✅ | Three-zone approval gate · override log · rubber-stamp prevention (review duration logged) |
+| Confidence threshold | ✅ | Reasoning-based `confidence_score` · zone routing · `flags[]` · `agent/escalation_rules.py` |
