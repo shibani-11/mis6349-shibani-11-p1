@@ -266,13 +266,14 @@ with st.sidebar:
                         use_container_width=True,
                     ):
                         data = load_run_data(rid)
+                        override = load_json(ROOT / "logs" / "overrides" / f"{rid}_override.json")
                         st.session_state.view_run_id     = rid
                         st.session_state.data_card       = data["data_card"]
                         st.session_state.model_selection = data["model_selection"]
                         st.session_state.recommendation  = data["recommendation"]
                         st.session_state.eval_report     = data["eval_report"]
                         st.session_state.run_id          = rid
-                        st.session_state.hitl_approved   = True
+                        st.session_state.hitl_approved   = override.get("human_decision") != "REJECTED"
                         st.session_state.page            = "results"
                         st.rerun()
                 with col_del:
@@ -664,18 +665,42 @@ elif st.session_state.page == "hitl":
     dc     = st.session_state.data_card or {}
     ms     = st.session_state.model_selection or {}
 
-    confidence   = rec.get("confidence_score", 0.0) or 0.0
-    flags        = rec.get("flags", [])
-    routing_zone = rec.get("routing_zone", "zone_2")
-    model        = rec.get("recommended_model", "Unknown")
-    auc          = rec.get("primary_metric_value")
-    exec_summary = rec.get("executive_summary", "")
-    review_reason = rec.get("human_review_reason", "")
+    # Resolve model name with fallback chain
+    model = (
+        rec.get("recommended_model") or
+        rec.get("selected_model") or
+        ms.get("selected_model") or "Unknown"
+    )
 
-    escalation = evaluate_escalation_rules(dc, ms)
-    esc_rules  = escalation.get("rules_triggered", [])
+    # Run escalation first so we can use it to derive routing zone and confidence
+    escalation   = evaluate_escalation_rules(dc, ms)
+    esc_rules    = escalation.get("rules_triggered", [])
+    routing_zone = rec.get("routing_zone", "zone_2")
     if escalation.get("hard_escalation"):
         routing_zone = "zone_3"
+    elif not esc_rules and routing_zone == "zone_2":
+        routing_zone = "zone_1"
+
+    # Derive primary metric value from models_trained if not in rec
+    pm = dc.get("priority_metric", "roc_auc")
+    _metric_col = {"roc_auc": "cv_roc_auc_mean", "recall": "cv_recall_mean",
+                   "f1_score": "cv_f1_mean", "precision": "cv_precision_mean"}.get(pm, "cv_roc_auc_mean")
+    auc = rec.get("primary_metric_value")
+    if auc is None:
+        for _m in ms.get("models_trained", []):
+            if _m.get("name") == model:
+                auc = _m.get(_metric_col)
+                break
+
+    # Derive confidence score if the agent omitted it
+    confidence = rec.get("confidence_score") or 0.0
+    if not confidence and auc:
+        n_issues   = len(esc_rules)
+        confidence = round(max(0.0, min(1.0, float(auc) - 0.08 * n_issues)), 3)
+
+    flags         = rec.get("flags", []) or [r["rule_name"] for r in esc_rules]
+    exec_summary  = rec.get("executive_summary", "")
+    review_reason = rec.get("human_review_reason", "")
 
     if st.session_state.hitl_start_time is None:
         st.session_state.hitl_start_time = time.time()
@@ -831,20 +856,119 @@ elif st.session_state.page in ("results", "view_run"):
     ms       = st.session_state.model_selection or {}
     rec      = st.session_state.recommendation or {}
     ev       = st.session_state.eval_report or {}
-    rejected = st.session_state.hitl_approved is False
+
+    # Read override file directly — more reliable than session state for historical runs
+    _override = load_json(ROOT / "logs" / "overrides" / f"{run_id}_override.json")
+    if _override:
+        rejected = _override.get("human_decision") == "REJECTED"
+    else:
+        rejected = st.session_state.hitl_approved is False
 
     st.markdown(f"## Report · `{run_id}`")
     if rejected:
-        st.error("Run rejected at the review step. Audit log saved. Full report was not generated.")
+        # ── Rejection summary ──────────────────────────────────────────────────
+        escalation   = evaluate_escalation_rules(dc, ms)
+        esc_rules    = escalation.get("rules_triggered", [])
+
+        FIXES = {
+            "INSUFFICIENT_TRAINING_DATA": [
+                "Collect more labelled records — aim for at least 1,000 rows before re-running.",
+                "Source a larger public or partner dataset covering the same domain.",
+                "Consider data augmentation or SMOTE only after reaching the minimum row count.",
+            ],
+            "OVERFITTING_DETECTED": [
+                "Reduce model complexity — try Logistic Regression or a shallow Decision Tree first.",
+                "Add regularisation (increase C in LR, reduce max_depth in tree models).",
+                "Collect more training data; overfitting is often a symptom of a small dataset.",
+                "Apply cross-validated feature selection to remove noise features.",
+            ],
+            "LEAKAGE_DETECTED": [
+                "Identify and remove features that are derived from or computed after the target event.",
+                "Re-run EDA with those columns dropped and inspect the AUC — a dramatic drop confirms leakage.",
+                "Ensure your train/test split happens before any feature engineering steps.",
+            ],
+            "STABILITY_FLAG": [
+                "High fold-to-fold variance usually means too little data or noisy features.",
+                "Try a simpler model — Logistic Regression is more stable on small datasets.",
+                "Increase the number of CV folds (e.g., 10-fold) to get a more reliable estimate.",
+            ],
+            "AMBIGUOUS_MODEL_SELECTION": [
+                "The performance gap is within statistical noise — choose based on operational fit.",
+                "Prefer the simpler model (Logistic Regression) if the team needs to explain decisions.",
+                "If latency matters, benchmark inference speed before deciding.",
+                "Re-run with more data; a larger sample will produce a clearer winner.",
+            ],
+            "TEST_VERDICT_FAIL": [
+                "Address the OVERFITTING or LEAKAGE issues listed above first.",
+                "Once fixed, re-run MIRA — a clean stress test is required before deployment.",
+            ],
+        }
+
+        st.markdown("""
+        <div style="background:#1c0f0f;border-left:4px solid #ef4444;border-radius:0 10px 10px 0;
+                    padding:1.2rem 1.5rem;margin-bottom:1.2rem;">
+            <div style="color:#f87171;font-weight:700;font-size:1rem;margin-bottom:0.3rem;">
+                ❌ Deployment Rejected
+            </div>
+            <div style="color:#94a3b8;font-size:0.9rem;">
+                You rejected this run at the review step. No model was recommended and no evaluation
+                report was generated. The decision and your rationale have been saved to the audit log.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if esc_rules:
+            st.markdown("### Why this run was escalated")
+            st.caption("These are the issues MIRA detected that triggered a Priority Review. Resolving them before your next run will improve the outcome.")
+
+            for rule in esc_rules:
+                name     = rule.get("rule_name", "UNKNOWN")
+                severity = rule.get("severity", "")
+                detail   = rule.get("detail", "")
+                fixes    = FIXES.get(name, ["Review the issue detail above and re-run after addressing it."])
+                sev_color = "#ef4444" if severity == "HIGH" else "#f59e0b"
+
+                with st.expander(f"**{name}** [{severity}]  —  {detail[:80]}{'…' if len(detail) > 80 else ''}", expanded=True):
+                    st.markdown(
+                        f"<span style='color:{sev_color};font-size:0.8rem;font-weight:700'>[{severity}]</span> {detail}",
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown("**Suggested corrective measures:**")
+                    for fix in fixes:
+                        st.markdown(f"- {fix}")
+
+        st.markdown("### What to do next")
+        st.info(
+            "1. Address the issues above.  \n"
+            "2. Prepare a revised or larger dataset.  \n"
+            "3. Click **New Recommendation** in the sidebar to start a fresh run."
+        )
+        st.divider()
 
     tabs = st.tabs(["📋 Summary", "🔍 Data Profile", "🏆 Approach Rankings", "🎯 Recommendation", "📊 Eval Report"])
 
     # ── Summary ──
     with tabs[0]:
+        # Resolve fields with fallback chains for results summary
+        _res_model = (rec.get("recommended_model") or rec.get("selected_model") or
+                      ms.get("selected_model") or "—")
+        _res_conf  = rec.get("confidence_score")
+        if not _res_conf:
+            _esc2     = evaluate_escalation_rules(dc, ms)
+            _pm2      = dc.get("priority_metric", "roc_auc")
+            _mcol2    = {"roc_auc": "cv_roc_auc_mean", "recall": "cv_recall_mean",
+                         "f1_score": "cv_f1_mean", "precision": "cv_precision_mean"}.get(_pm2, "cv_roc_auc_mean")
+            _base_auc = next((m.get(_mcol2) for m in ms.get("models_trained", [])
+                              if m.get("name") == _res_model), None)
+            if _base_auc:
+                _res_conf = round(max(0.0, min(1.0, float(_base_auc) -
+                                               0.08 * len(_esc2.get("rules_triggered", [])))), 3)
+        _res_zone  = rec.get("routing_zone") or "—"
+
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Recommended Approach", rec.get("recommended_model", "—"))
-        c2.metric("Confidence Score",     f"{rec.get('confidence_score', 0):.3f}" if isinstance(rec.get("confidence_score"), float) else "—")
-        c3.metric("Review Zone",          rec.get("routing_zone", "—"))
+        c1.metric("Recommended Approach", _res_model)
+        c2.metric("Confidence Score",     f"{_res_conf:.3f}" if isinstance(_res_conf, float) else "—")
+        c3.metric("Review Zone",          _res_zone)
         c4.metric("Stress Test Verdict",  ms.get("test_verdict", "—"))
 
         st.markdown("")
@@ -950,20 +1074,25 @@ elif st.session_state.page in ("results", "view_run"):
 
     # ── Recommendation ──
     with tabs[3]:
-        if not rec or not rec.get("recommended_model"):
+        _tab_model = (rec.get("recommended_model") or rec.get("selected_model") or ms.get("selected_model"))
+        if not rec or not _tab_model:
             st.caption("No recommendation produced for this run.")
         else:
+            _tab_reason = (rec.get("selection_reason") or rec.get("selection_reasoning") or
+                           ms.get("selection_reasoning") or "")
             st.markdown(
                 f'<div class="rec-card">'
-                f'<h2>Deploy: {rec.get("recommended_model")}</h2>'
-                f'<p>{rec.get("selection_reason", "")}</p>'
+                f'<h2>Deploy: {_tab_model}</h2>'
+                f'<p>{_tab_reason}</p>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
+            _tab_pmv  = rec.get("primary_metric_value")
+            _tab_conf = rec.get("confidence_score")
             c1, c2, c3 = st.columns(3)
-            c1.metric("Primary Metric",   f"{rec.get('primary_metric_value', 0):.4f}" if isinstance(rec.get("primary_metric_value"), float) else "—")
-            c2.metric("Confidence Score", f"{rec.get('confidence_score', 0):.3f}"     if isinstance(rec.get("confidence_score"), float) else "—")
-            c3.metric("Alternative",      rec.get("alternative_model", "—"))
+            c1.metric("Primary Metric",   f"{_tab_pmv:.4f}"  if isinstance(_tab_pmv, float)  else "—")
+            c2.metric("Confidence Score", f"{_tab_conf:.3f}" if isinstance(_tab_conf, float) else "—")
+            c3.metric("Alternative",      rec.get("alternative_model") or rec.get("runner_up_model") or ms.get("runner_up_model") or "—")
 
             st.divider()
             ca, cb = st.columns(2)

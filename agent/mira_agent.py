@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 from openhands.sdk import LLM, Agent, Conversation, Tool
-from openhands.sdk.context.skills.skill import Skill
+from openhands.sdk.skills.skill import Skill
 from openhands.sdk.context.agent_context import AgentContext
 from openhands.tools.terminal import TerminalTool
 from openhands.tools.file_editor import FileEditorTool

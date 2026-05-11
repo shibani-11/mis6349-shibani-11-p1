@@ -212,6 +212,13 @@ if cat_cols:
 # Scale numerics
 X_raw = df.drop(columns=[target])
 y     = df[target]
+
+# Encode string target to 0/1 so all downstream scripts receive numeric labels
+if y.dtype == object or str(y.dtype) == "category":
+    from sklearn.preprocessing import LabelEncoder
+    _le = LabelEncoder()
+    y = pd.Series(_le.fit_transform(y), index=y.index, name=target)
+    print(f"  Target label-encoded: {dict(zip(_le.classes_, _le.transform(_le.classes_)))}")
 numeric_to_scale = X_raw.select_dtypes(include="number").columns.tolist()
 scaler = StandardScaler()
 X_scaled = X_raw.copy()

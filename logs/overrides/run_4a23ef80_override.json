@@ -1,0 +1,25 @@
+{
+  "run_id": "run_4a23ef80",
+  "timestamp": "2026-05-11T19:42:39.946050",
+  "routing_zone": "zone_3",
+  "escalation_rules_triggered": [
+    "INSUFFICIENT_TRAINING_DATA",
+    "OVERFITTING_DETECTED",
+    "TEST_VERDICT_FAIL",
+    "AMBIGUOUS_MODEL_SELECTION"
+  ],
+  "agent_recommendation": {
+    "recommended_model": null,
+    "primary_metric_value": null,
+    "confidence_score": null,
+    "flags": [],
+    "requires_human_review": null,
+    "human_review_reason": null
+  },
+  "human_decision": "REJECTED",
+  "override_category": "PERFORMANCE_ACCEPTABLE",
+  "human_rationale": "Zone 3 - catastrophic scenario. Deployement reject decision.",
+  "review_duration_seconds": 475.6,
+  "agent_version": "MIRA v0.5.0",
+  "prompt_version": "mira_agent_v0_5_0.md"
+}

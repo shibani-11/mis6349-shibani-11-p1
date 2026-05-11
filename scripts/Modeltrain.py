@@ -30,6 +30,13 @@ target = args.target
 X = df.drop(columns=[target])
 y = df[target]
 
+# Encode string target labels to 0/1 (e.g. Yes/No, True/False, Churn/No Churn)
+if y.dtype == object or str(y.dtype) == "category":
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder()
+    y = pd.Series(le.fit_transform(y), index=y.index, name=target)
+    print(f"  Target encoded: {dict(zip(le.classes_, le.transform(le.classes_)))}")
+
 minority_class_ratio = data_card.get("minority_class_ratio", 0.5)
 use_balanced = minority_class_ratio < 0.20
 cw = "balanced" if use_balanced else None
