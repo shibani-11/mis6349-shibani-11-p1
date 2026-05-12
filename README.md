@@ -161,59 +161,81 @@ Phase 3 — MIRAAgent       →  recommendation.json   (deployment recommendatio
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    INPUT["📤 User Input
+    dataset · target column · business problem"]
+
+    INPUT --> VALID["AgentInput — Pydantic Validation"]
+    VALID --> ORCH
+
+    subgraph ORCH["Orchestrator"]
+        APP["Streamlit UI  app.py
+        or CLI  main.py
+        Phase transitions · run log"]
+    end
+
+    ORCH --> P1
+
+    subgraph PIPELINE["MIRA Agentic Pipeline"]
+        direction TB
+        P1["🔎 Phase 1 — EDA
+        scripts/EDA.py
+        Clean · Profile · LLM metric inference
+        ─────────────────────
+        data_card.json"]
+
+        P2["🏋️ Phase 2 — Model Training
+        scripts/Modeltrain.py
+        5 models · 5-fold CV · Stress tests
+        ─────────────────────
+        model_selection.json"]
+
+        P3["🤖 Phase 3 — Recommendation
+        MIRAAgent + mira-recommend Skill
+        LLM reasoning · confidence score · flags
+        ─────────────────────
+        recommendation.json"]
+
+        P1 --> P2 --> P3
+    end
+
+    P3 --> HITL
+
+    subgraph HITL["Three-Zone HITL Gate  escalation_rules.py"]
+        direction LR
+        Z1["Zone 1
+        confidence ≥ 0.85
+        Auto-proceed"]
+        Z2["Zone 2
+        soft flags
+        Human review"]
+        Z3["Zone 3
+        hard escalation
+        Priority review"]
+    end
+
+    HITL -->|"approved"| EVAL
+
+    subgraph EVAL["7-Layer Eval Runner  evals/eval_runner.py"]
+        E["Behavior · Quality · System · Unit Tests
+        HITL Gate · Production Checklist · LLM Judge
+        ─────────────────────
+        eval_report.json"]
+    end
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  USER INPUT                                                     │
-│  dataset_path · target_column · business_problem               │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │  AgentInput (Pydantic validation)
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  STREAMLIT UI  (app.py)  or  CLI  (main.py)                     │
-│  Orchestrates phase transitions · writes run log                │
-└──────────┬────────────────┬────────────────┬────────────────────┘
-           │                │                │
-           ▼                ▼                ▼
-┌──────────────┐  ┌──────────────────┐  ┌─────────────────────────┐
-│ PHASE 1      │  │ PHASE 2          │  │ PHASE 3                 │
-│ scripts/     │  │ scripts/         │  │ agent/mira_agent.py     │
-│ EDA.py       │  │ Modeltrain.py    │  │ OpenHands SDK           │
-│              │  │                  │  │ mira-recommend Skill    │
-│ - Clean data │  │ - Train 5 models │  │ - Context injection     │
-│ - Profile    │  │ - 5-fold CV      │  │ - LLM reasoning         │
-│ - LLM metric │  │ - Stress tests   │  │ - 20-field output       │
-│   inference  │  │   (overfit,      │  │ - validate_output()     │
-│              │  │    leakage,      │  │                         │
-│              │  │    stability)    │  │                         │
-└──────┬───────┘  └────────┬─────────┘  └────────────┬────────────┘
-       │                   │                          │
-       ▼                   ▼                          ▼
- data_card.json    model_selection.json       recommendation.json
-                                                      │
-                                                      ▼
-                                         ┌────────────────────────┐
-                                         │  HITL GATE             │
-                                         │  Zone 1 → auto-proceed │
-                                         │  Zone 2 → review       │
-                                         │  Zone 3 → escalate     │
-                                         └────────────┬───────────┘
-                                                      │ approved
-                                                      ▼
-                                         ┌────────────────────────┐
-                                         │  EVAL RUNNER           │
-                                         │  evals/eval_runner.py  │
-                                         │                        │
-                                         │  1. Behavior evals     │
-                                         │  2. Quality eval       │
-                                         │  3. System eval        │
-                                         │  4. Unit tests (18)    │
-                                         │  5. HITL gate risk     │
-                                         │  6. Prod checklist     │
-                                         │  7. LLM judge          │
-                                         └────────────┬───────────┘
-                                                      ▼
-                                              eval_report.json
-```
+
+## Business Outcomes
+
+| Outcome | How MIRA delivers it |
+|---|---|
+| **Faster model selection** | Full EDA + 5-model CV completes in under 10 minutes — no analyst setup required |
+| **Reduced deployment risk** | Automated overfitting, leakage, and stability stress tests run before any recommendation is surfaced |
+| **Consistent decisions** | The same logic, thresholds, and metric inference apply to every dataset — no analyst-to-analyst variation |
+| **Right metric for the business** | LLM infers recall vs precision vs F1 vs AUC directly from the business problem text, not from a dropdown |
+| **Compliance-ready audit trail** | Every HITL decision is logged with rationale, routing zone, override category, and review duration |
+| **Graceful escalation** | Zone 3 cases surface to humans with full context and corrective actions — no silent failures |
+| **Reusable across domains** | Works on any tabular classification dataset — churn, fraud, risk, medical — without code changes |
 
 ---
 

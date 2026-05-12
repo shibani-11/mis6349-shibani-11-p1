@@ -1,6 +1,6 @@
 {
-  "run_id": "run_e3e2ee12",
-  "timestamp": "2026-05-11T20:08:51.500244",
+  "run_id": "run_8e846def",
+  "timestamp": "2026-05-11T23:44:19.872720",
   "routing_zone": "zone_3",
   "escalation_rules_triggered": [
     "INSUFFICIENT_TRAINING_DATA",
@@ -18,8 +18,8 @@
   },
   "human_decision": "REJECTED",
   "override_category": "PERFORMANCE_ACCEPTABLE",
-  "human_rationale": "4 issues stated cannot be overriden. Models not reliable. Deployment rejected",
-  "review_duration_seconds": 96.2,
+  "human_rationale": "Not acceptable behaviour. reject deploy",
+  "review_duration_seconds": 204.8,
   "agent_version": "MIRA v0.5.0",
   "prompt_version": "mira_agent_v0_5_0.md"
 }

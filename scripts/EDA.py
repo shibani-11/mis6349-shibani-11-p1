@@ -285,16 +285,21 @@ Dataset facts:
 - Class imbalance detected: {imbalance}
 - Minority class ratio: {minority_ratio:.3f}
 
-Choose the single best evaluation metric for model selection from this list:
+Step 1 — Decide if this is a legitimate business problem.
+A legitimate business problem describes a real prediction goal (e.g. detect churn, identify fraud, predict default).
+It is NOT legitimate if it is: nonsense, offensive, a test string, a complaint, or unrelated to any prediction task.
+
+Step 2 — If legitimate, choose the single best evaluation metric:
 - roc_auc    : best for balanced datasets and general ranking ability
 - recall     : best when missing a positive case (false negative) is costly
 - f1_score   : best when both false positives and false negatives matter equally
 - precision  : best when false positives are very costly
 
-Respond with a JSON object with exactly two keys:
+Respond with a JSON object with exactly three keys:
 {{
-  "metric": "<one of: roc_auc, recall, f1_score, precision>",
-  "reason": "<one sentence explaining why this metric fits the business problem>"
+  "valid": true or false,
+  "metric": "<one of: roc_auc, recall, f1_score, precision> — use roc_auc if not valid",
+  "reason": "<if valid: one sentence why this metric fits> <if not valid: one sentence explaining what is wrong with the input>"
 }}
 
 No markdown. No explanation outside the JSON."""
@@ -309,15 +314,23 @@ No markdown. No explanation outside the JSON."""
         )
         raw = response.choices[0].message.content.strip()
         parsed = json.loads(raw)
+
+        usage = getattr(response, "usage", None)
+        prompt_tokens     = getattr(usage, "prompt_tokens", 0) or 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+
+        if not parsed.get("valid", True):
+            reason = parsed.get("reason", "Business problem is not a valid prediction objective.")
+            raise ValueError(f"INVALID_BUSINESS_PROBLEM: {reason}")
+
         metric = parsed.get("metric", "roc_auc")
         reason = parsed.get("reason", "")
         if metric not in VALID_METRICS:
             metric = "roc_auc"
-            reason = f"LLM returned unknown metric — defaulted to roc_auc."
-        usage = getattr(response, "usage", None)
-        prompt_tokens     = getattr(usage, "prompt_tokens", 0) or 0
-        completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+            reason = "LLM returned unknown metric — defaulted to roc_auc."
         return metric, reason, prompt_tokens, completion_tokens
+    except ValueError:
+        raise
     except Exception as e:
         return "roc_auc", f"Metric inference failed ({e}) — defaulted to roc_auc.", 0, 0
 

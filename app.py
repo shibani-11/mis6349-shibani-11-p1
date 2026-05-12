@@ -551,8 +551,25 @@ elif st.session_state.page == "phase1":
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
 
     if result.returncode != 0:
-        log(f"Phase 1 FAILED: {result.stderr[:300]}")
-        st.session_state.error_message = result.stderr
+        stderr = result.stderr or ""
+        if "INVALID_BUSINESS_PROBLEM" in stderr:
+            # Extract the human-readable reason from the error
+            for line in stderr.splitlines():
+                if "INVALID_BUSINESS_PROBLEM" in line:
+                    reason = line.split("INVALID_BUSINESS_PROBLEM:")[-1].strip()
+                    break
+            else:
+                reason = "The business problem you entered does not describe a valid prediction objective."
+            st.session_state.error_message = (
+                f"INVALID_BUSINESS_PROBLEM\n\n{reason}\n\n"
+                "Please go back and describe a real business goal — for example:\n"
+                "  • 'Identify customers likely to churn so retention can intervene early.'\n"
+                "  • 'Predict which loan applications are likely to default.'\n"
+                "  • 'Flag fraudulent transactions before they are processed.'"
+            )
+        else:
+            log(f"Phase 1 FAILED: {stderr[:300]}")
+            st.session_state.error_message = stderr
         st.session_state.page = "error"
     else:
         log("Data profiling complete")
@@ -1164,8 +1181,14 @@ elif st.session_state.page in ("results", "view_run"):
 # ─── ERROR page ───────────────────────────────────────────────────────────────
 
 elif st.session_state.page == "error":
-    st.error("## Something went wrong")
-    if st.session_state.error_message:
-        with st.expander("Error details"):
-            st.code(st.session_state.error_message)
+    msg = st.session_state.error_message or ""
+    if msg.startswith("INVALID_BUSINESS_PROBLEM"):
+        st.warning("## Invalid Business Problem")
+        clean = msg.replace("INVALID_BUSINESS_PROBLEM\n\n", "", 1)
+        st.markdown(clean)
+    else:
+        st.error("## Something went wrong")
+        if msg:
+            with st.expander("Error details"):
+                st.code(msg)
     st.info("Click **New Recommendation** in the sidebar to start again.")

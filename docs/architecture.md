@@ -129,56 +129,70 @@ Response: `max_iterations=40` gives budget to self-correct. Schema violation tri
 
 ## Agent Architecture
 
-```
-┌──────────────────────────────────────────────────────────┐
-│  USER INPUT (CLI)                                         │
-│  dataset · target_column · business_problem              │
-└────────────────────────┬─────────────────────────────────┘
-                         │  AgentInput (Pydantic validation)
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│  MIRAAgent  (agent/mira_agent.py)                         │
-│  Loads system prompt v0.5.0 + mira-recommend skill        │
-│                                                           │
-│  Phase 1 → python3 scripts/EDA.py                        │
-│    LLM infers priority_metric from business_problem       │
-│    → data_card.json                                       │
-│                          CoT gate                         │
-│  Phase 2 → python3 scripts/Modeltrain.py                 │
-│    Ranks 5 models by inferred priority metric             │
-│    → model_selection.json                                 │
-│                          CoT gate                         │
-│  Phase 3 → mira-recommend skill                          │
-│    Computes reasoning confidence_score + flags[]          │
-│    Computes routing_zone                                  │
-│    → recommendation.json                                  │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│  THREE-ZONE HITL GATE  (agent/main.py)                    │
-│                                                           │
-│  escalation_rules.py checks 8 hard rules                  │
-│                                                           │
-│  Zone 1 (confidence ≥ 0.85, no flags)                    │
-│    → AUTO-PROCEED                                         │
-│                                                           │
-│  Zone 2 (confidence 0.70-0.84 or soft flags)             │
-│    → CLI prompt: model, AUC, confidence, flags            │
-│    → Human: yes/no + override category + rationale        │
-│                                                           │
-│  Zone 3 (confidence < 0.70 or hard escalation rule)      │
-│    → CLI prompt: full detail + escalation rule list       │
-│    → Human: yes/no + override category + rationale        │
-│                                                           │
-│  Override log → logs/overrides/{run_id}_override.json    │
-└────────────────────────┬─────────────────────────────────┘
-                         │  (if approved)
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│  EVAL RUNNER  (evals/eval_runner.py)                      │
-│  7 layers → processed/{run_id}_eval_report.json          │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    INPUT["📤 User Input
+    dataset · target_column · business_problem"]
+
+    INPUT --> VALID["AgentInput — Pydantic Validation"]
+    VALID --> AGENT
+
+    subgraph AGENT["MIRAAgent  agent/mira_agent.py
+    System prompt v0.5.0 · mira-recommend skill"]
+        direction TB
+
+        P1["🔎 Phase 1 — EDA
+        python3 scripts/EDA.py
+        LLM infers priority_metric from business_problem
+        CoT gate written before Phase 2
+        ──────────────────
+        data_card.json"]
+
+        P2["🏋️ Phase 2 — Model Training
+        python3 scripts/Modeltrain.py
+        Ranks 5 models by inferred priority metric
+        CoT gate written before Phase 3
+        ──────────────────
+        model_selection.json"]
+
+        P3["🤖 Phase 3 — mira-recommend skill
+        Computes confidence_score + flags[]
+        Computes routing_zone
+        ──────────────────
+        recommendation.json"]
+
+        P1 --> P2 --> P3
+    end
+
+    P3 --> HITL
+
+    subgraph HITL["Three-Zone HITL Gate  agent/main.py
+    escalation_rules.py — 8 hard rules"]
+        direction LR
+        Z1["Zone 1
+        confidence ≥ 0.85
+        no hard flags
+        → AUTO-PROCEED"]
+        Z2["Zone 2
+        confidence 0.70–0.84
+        or soft flags
+        → Human review
+        override category + rationale"]
+        Z3["Zone 3
+        confidence < 0.70
+        or hard escalation
+        → Priority escalation
+        full rule list surfaced"]
+    end
+
+    HITL -->|"approved — logs/overrides/"| EVAL
+
+    subgraph EVAL["Eval Runner  evals/eval_runner.py"]
+        E["7 layers: Behavior · Quality · System
+        Unit Tests · HITL Gate · Production Checklist · LLM Judge
+        ──────────────────
+        processed/{run_id}_eval_report.json"]
+    end
 ```
 
 ---

@@ -12,14 +12,27 @@ Run two pre-built scripts in sequence, then invoke the mira-recommend skill to g
 
 ---
 
-## Rules
+## What MIRA Must Do
 
-- Run each script exactly ONCE using TerminalTool
-- Do NOT write Python files. Do NOT modify the scripts.
-- If a script fails, fix the environment (e.g. missing arg) and re-run — do not rewrite it
-- After each script, verify the output printed `SCHEMA OK`
-- After Phase 2, invoke the mira-recommend skill to generate recommendation.json
-- Only call TaskTracker after all three phases are complete and all outputs exist
+- Run EDA.py exactly **once** and confirm `SCHEMA OK` is printed before continuing
+- Run Modeltrain.py exactly **once** and confirm `SCHEMA OK` is printed before continuing
+- Write a Chain-of-Thought reasoning block after each phase before proceeding to the next
+- Follow the mira-recommend skill step-by-step to produce recommendation.json
+- Populate every required key in recommendation.json with a real, computed value — no nulls, no placeholders
+- Call TaskTracker only after all three output files exist and all schemas are confirmed
+
+## What MIRA Must NOT Do
+
+- **Must NOT write Python code** — do not create, edit, or overwrite any `.py` file
+- **Must NOT run either script more than once** — each script runs exactly one time per phase
+- **Must NOT skip schema verification** — if `SCHEMA OK` is not printed, stop and diagnose before continuing
+- **Must NOT run `/mira-recommend` as a shell command** — it is a skill, not a terminal command
+- **Must NOT invent metric values** — all numbers in recommendation.json must come from data_card.json or model_selection.json; do not estimate or fabricate AUC, confidence, or recall figures
+- **Must NOT call TaskTracker early** — TaskTracker is only valid after Phase 3 is complete and recommendation.json is verified
+- **Must NOT recommend a model not present in models_trained** — the recommended_model field must match a name from Modeltrain.py output exactly
+- **Must NOT set confidence_score above 0.85 when flags[] is non-empty** — a flagged run cannot be high-confidence
+- **Must NOT ignore a SCHEMA VIOLATION message** — if a schema error is pushed, fix and rewrite the file before continuing
+- **Must NOT proceed to the next phase if the current phase's output file is missing or empty**
 
 ---
 

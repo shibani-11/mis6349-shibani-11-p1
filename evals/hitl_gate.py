@@ -12,10 +12,45 @@ Risk levels and weights:
   HIGH      (3) — severe class imbalance (>90%) with no resampling
   MEDIUM    (2) — recommended model shows overfitting
   MEDIUM    (2) — recommendation confidence < 0.60
-  LOW       (1) — selection reason too thin (<50 chars)
+  HIGH      (3) — policy violation in rationale (profanity or rubber-stamp)
 
 HITL is triggered when total_risk_score >= 5.
 """
+
+import re
+
+_PROFANITY = {
+    "damn", "hell", "crap", "ass", "asshole", "bastard", "bitch", "shit",
+    "fuck", "fucking", "piss", "dick", "cock", "pussy", "cunt", "bollocks",
+    "wank", "twat", "arse",
+}
+
+_RUBBER_STAMP = {
+    "ok", "okay", "fine", "approved", "looks good", "seems fine", "all good",
+    "nothing to add", "no issues", "n/a", "na", "none", "good", "sure",
+    "yes", "yep", "correct", "agree", "approved.", "ok.", "fine.", "done",
+    "lgtm", "ship it", "whatever", "idk", "no comment",
+}
+
+
+def _policy_violation(text: str) -> str | None:
+    """Return a description of the first policy violation found, or None."""
+    normalised = text.strip().lower()
+    words = set(re.findall(r"[a-z']+", normalised))
+
+    profane = words & _PROFANITY
+    if profane:
+        return f"Profanity detected in rationale: {', '.join(sorted(profane))}"
+
+    # Rubber-stamp: the entire trimmed text matches a known filler phrase
+    if normalised in _RUBBER_STAMP:
+        return f"Rubber-stamp rationale detected: '{text.strip()}' — no genuine justification provided"
+
+    # Very short + generic (< 15 chars and not substantive)
+    if len(normalised) < 15 and not any(c.isdigit() for c in normalised):
+        return f"Rationale too generic to be meaningful: '{text.strip()}' ({len(normalised)} chars)"
+
+    return None
 
 
 def evaluate_hitl_risk(
@@ -114,14 +149,15 @@ def evaluate_hitl_risk(
             f"Confidence score {confidence:.2f} < 0.60 threshold",
         )
 
-    # --- LOW: thin selection justification ------------------------------
+    # --- HIGH: policy violation in rationale ----------------------------
     reason = recommendation.get("selection_reason", "")
-    if len(reason) < 50:
+    violation = _policy_violation(reason)
+    if violation:
         add_risk(
-            "thin_business_justification",
-            "LOW",
-            1,
-            f"selection_reason has only {len(reason)} chars — lacks substance",
+            "policy_violation_in_rationale",
+            "HIGH",
+            3,
+            violation,
         )
 
     # --- Aggregate -------------------------------------------------------

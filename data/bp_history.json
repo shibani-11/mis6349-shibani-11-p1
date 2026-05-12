@@ -1,0 +1,5 @@
+[
+  "Given a person's demographic and employment attributes, can we predict whether their annual income exceeds $50K, enabling the marketing team to target high-income segments with premium product offerings?",
+  "A retail bank wants to identify customers likely to churn in the next 90 days so the retention team can intervene early. Missing a churner costs far more in lost revenue than a false alarm, so recall is more important than precision.",
+  "Given a patient's basic health metrics (glucose level, BMI, age, insulin, blood pressure, etc.) can we predict whether the patient is likely to have diabetes, enabling early intervention and personalized care plans?"
+]

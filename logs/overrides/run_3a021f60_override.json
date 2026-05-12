@@ -1,6 +1,6 @@
 {
-  "run_id": "run_a571067a",
-  "timestamp": "2026-05-02T15:59:48.557790",
+  "run_id": "run_3a021f60",
+  "timestamp": "2026-05-11T22:09:14.124630",
   "routing_zone": "zone_2",
   "escalation_rules_triggered": [
     "AMBIGUOUS_MODEL_SELECTION",
@@ -9,15 +9,15 @@
   "agent_recommendation": {
     "recommended_model": null,
     "primary_metric_value": null,
-    "confidence_score": null,
+    "confidence_score": 0.5925,
     "flags": [],
-    "requires_human_review": null,
+    "requires_human_review": true,
     "human_review_reason": null
   },
   "human_decision": "APPROVED",
   "override_category": "PERFORMANCE_ACCEPTABLE",
-  "human_rationale": "This conditions that have failed are not something that would affect my scenario at the moment",
-  "review_duration_seconds": 89.0,
+  "human_rationale": "I'm okay with the tradeoff",
+  "review_duration_seconds": 31.6,
   "agent_version": "MIRA v0.5.0",
   "prompt_version": "mira_agent_v0_5_0.md"
 }
